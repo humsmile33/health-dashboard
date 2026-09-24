@@ -10,18 +10,25 @@ import os
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_FILE = os.path.join(BASE_DIR, "workout_data.json")
+HEALTH_FILE = os.path.join(BASE_DIR, "health_data.json")
 OUTPUT_FILE = os.path.join(BASE_DIR, "workout_dashboard.html")
 INDEX_FILE = os.path.join(BASE_DIR, "index.html")
 
 with open(DATA_FILE, "r", encoding="utf-8") as f:
     workout_data_json = f.read().strip()
 
-# Template with placeholder __INITIAL_WORKOUT_DATA__
+health_data_json = "[]"
+if os.path.exists(HEALTH_FILE):
+    with open(HEALTH_FILE, "r", encoding="utf-8") as f:
+        health_data_json = f.read().strip()
+
+# Template with placeholders __INITIAL_WORKOUT_DATA__ and __INITIAL_HEALTH_DATA__
 template_path = os.path.join(BASE_DIR, "workout_dashboard_template.html")
 with open(template_path, "r", encoding="utf-8") as f:
     template = f.read()
 
 output = template.replace("__INITIAL_WORKOUT_DATA__", workout_data_json)
+output = output.replace("__INITIAL_HEALTH_DATA__", health_data_json)
 
 with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
     f.write(output)

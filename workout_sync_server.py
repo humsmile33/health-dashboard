@@ -226,6 +226,7 @@ class SyncServerHandler(SimpleHTTPRequestHandler):
         if parsed.path == '/api/data':
             with cache_lock:
                 data_copy = list(cached_records)
+                h_copy = list(cached_health_records)
                 ts = last_sync_timestamp
                 st = sync_status
                 sc = sync_count
@@ -238,7 +239,8 @@ class SyncServerHandler(SimpleHTTPRequestHandler):
                 "spreadsheet_id": SPREADSHEET_ID,
                 "sheet_name": "운동 기록",
                 "count": len(data_copy),
-                "data": data_copy
+                "data": data_copy,
+                "health_data": h_copy
             }
             body = json.dumps(response_data, ensure_ascii=False).encode('utf-8')
             self.send_response(200)
@@ -272,6 +274,7 @@ class SyncServerHandler(SimpleHTTPRequestHandler):
                     "sync_status": sync_status,
                     "sync_count": sync_count,
                     "count": len(cached_records),
+                    "health_count": len(cached_health_records),
                     "spreadsheet_id": SPREADSHEET_ID,
                     "sheet_url": f"https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/edit"
                 }
@@ -296,6 +299,7 @@ class SyncServerHandler(SimpleHTTPRequestHandler):
 
             with cache_lock:
                 data_copy = list(cached_records)
+                h_copy = list(cached_health_records)
                 ts = last_sync_timestamp
                 st = sync_status
                 sc = sync_count
@@ -307,7 +311,8 @@ class SyncServerHandler(SimpleHTTPRequestHandler):
                 "sync_status": st,
                 "sync_count": sc,
                 "count": len(data_copy),
-                "data": data_copy
+                "data": data_copy,
+                "health_data": h_copy
             }
             body = json.dumps(response_data, ensure_ascii=False).encode('utf-8')
             self.send_response(200 if ok else 500)
