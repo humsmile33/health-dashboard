@@ -1,0 +1,24 @@
+# Python virtual environments & bytecode
+.venv/
+venv/
+env/
+__pycache__/
+*.pyc
+
+# Sensitive Google Sheets OAuth credentials & tokens (CRITICAL - DO NOT COMMIT)
+credentials.json
+token.json
+token.pickle
+client_secrets*.json
+
+# Logs
+*.log
+cron.log
+sync_server.log
+workout_sync_server.log
+
+# Temporary / Scratch directories & system files
+scratch/
+.DS_Store
+.idea/
+.vscode/

@@ -1,0 +1,1432 @@
+<!DOCTYPE html>
+<html lang="ko" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>일일 브리핑 대시보드</title>
+    <!-- Tailwind CSS for utility styles -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f5f3ff',
+                            100: '#ede9fe',
+                            200: '#ddd6fe',
+                            300: '#c4b5fd',
+                            400: '#a78bfa',
+                            500: '#8b5cf6',
+                            600: '#7c3aed',
+                            700: '#6d28d9',
+                            800: '#5b21b6',
+                            900: '#4c1d95',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Pretendard', '-apple-system', 'BlinkMacSystemFont', 'system-ui', 'Roboto', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <script>
+        // Prevent theme flash by detecting theme preference immediately
+        (function() {
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme === 'light') {
+                document.documentElement.classList.remove('dark');
+            } else {
+                document.documentElement.classList.add('dark');
+            }
+        })();
+    </script>
+    <!-- Google Fonts & Pretendard CDN for typography -->
+    <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" />
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Chart.js for visualization -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: 'Pretendard', sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #020617 100%);
+            min-height: 100vh;
+            transition: background 0.3s ease, color 0.3s ease;
+        }
+        .glass-card {
+            background: rgba(30, 41, 59, 0.45);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+            transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+        .glass-card-hover {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .glass-card-hover:hover {
+            transform: translateY(-4px);
+            background: rgba(30, 41, 59, 0.6);
+            border-color: rgba(139, 92, 246, 0.3);
+            box-shadow: 0 12px 40px 0 rgba(139, 92, 246, 0.15);
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.5);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(139, 92, 246, 0.3);
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(139, 92, 246, 0.5);
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.4s ease-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Light mode override CSS */
+        html:not(.dark) body {
+            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 50%, #e2e8f0 100%);
+            color: #0f172a;
+        }
+        html:not(.dark) .glass-card {
+            background: rgba(255, 255, 255, 0.65);
+            border: 1px solid rgba(15, 23, 42, 0.08);
+            box-shadow: 0 8px 32px 0 rgba(148, 163, 184, 0.12);
+        }
+        html:not(.dark) .glass-card-hover:hover {
+            background: rgba(255, 255, 255, 0.85);
+            border-color: rgba(139, 92, 246, 0.4);
+            box-shadow: 0 12px 40px 0 rgba(139, 92, 246, 0.12);
+        }
+        html:not(.dark) .text-white {
+            color: #0f172a !important;
+        }
+        html:not(.dark) .text-slate-100 {
+            color: #0f172a;
+        }
+        html:not(.dark) .text-slate-200 {
+            color: #1e293b;
+        }
+        html:not(.dark) .text-slate-300 {
+            color: #334155;
+        }
+        html:not(.dark) .text-slate-400 {
+            color: #475569;
+        }
+        html:not(.dark) .text-slate-500 {
+            color: #64748b;
+        }
+        html:not(.dark) .text-brand-300 {
+            color: #5b21b6;
+        }
+        html:not(.dark) .text-brand-400 {
+            color: #7c3aed;
+        }
+        html:not(.dark) .text-violet-300 {
+            color: #6d28d9;
+        }
+        html:not(.dark) .text-violet-400 {
+            color: #7c3aed;
+        }
+        html:not(.dark) .bg-white\/5 {
+            background-color: rgba(15, 23, 42, 0.04);
+        }
+        html:not(.dark) .divide-white\/5 > * + * {
+            border-color: rgba(15, 23, 42, 0.06);
+        }
+        html:not(.dark) .border-white\/5 {
+            border-color: rgba(15, 23, 42, 0.06);
+        }
+        html:not(.dark) .border-white\/10 {
+            border-color: rgba(15, 23, 42, 0.08);
+        }
+        html:not(.dark) .bg-slate-800\/50 {
+            background-color: rgba(255, 255, 255, 0.5);
+        }
+        html:not(.dark) .bg-brand-950\/10 {
+            background-color: rgba(139, 92, 246, 0.05);
+        }
+
+        /* Light mode overrides for inner cards and sub-containers */
+        html:not(.dark) .bg-slate-900\/20,
+        html:not(.dark) .bg-slate-900\/30,
+        html:not(.dark) .bg-slate-900\/40,
+        html:not(.dark) .bg-slate-900\/50 {
+            background-color: rgba(255, 255, 255, 0.85);
+            border-color: rgba(203, 213, 225, 0.7);
+        }
+
+        /* 5. TAB: 주요 동향 (Trends) Light Mode Enhancements */
+        html:not(.dark) #trend-search-input {
+            background-color: #ffffff !important;
+            color: #0f172a !important;
+            border-color: #cbd5e1 !important;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+        }
+        html:not(.dark) #trend-search-input::placeholder {
+            color: #94a3b8 !important;
+        }
+        html:not(.dark) #trend-search-input:focus {
+            border-color: #8b5cf6 !important;
+            box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.15);
+        }
+
+        html:not(.dark) .trend-dir-filter-btn {
+            background-color: rgba(241, 245, 249, 0.9) !important;
+            border-color: rgba(203, 213, 225, 0.8) !important;
+            color: #475569 !important;
+        }
+        html:not(.dark) .trend-dir-filter-btn:hover {
+            background-color: #ffffff !important;
+            color: #0f172a !important;
+            border-color: #cbd5e1 !important;
+        }
+        html:not(.dark) #filter-dir-all.bg-violet-600\/30,
+        html:not(.dark) #filter-dir-all.bg-violet-600\/40,
+        html:not(.dark) .trend-dir-filter-btn.bg-violet-600\/30,
+        html:not(.dark) .trend-dir-filter-btn.bg-violet-600\/40 {
+            background-color: #8b5cf6 !important;
+            color: #ffffff !important;
+            border-color: #7c3aed !important;
+        }
+
+        html:not(.dark) .trend-card-btn {
+            background-color: rgba(255, 255, 255, 0.85) !important;
+            border-color: rgba(226, 232, 240, 0.9) !important;
+            box-shadow: 0 1px 3px rgba(15, 23, 42, 0.03);
+        }
+        html:not(.dark) .trend-card-btn:hover {
+            background-color: rgba(245, 243, 255, 0.9) !important;
+            border-color: rgba(139, 92, 246, 0.4) !important;
+        }
+        html:not(.dark) .trend-card-btn.border-violet-500\/50 {
+            background-color: #ede9fe !important;
+            border-color: #8b5cf6 !important;
+            box-shadow: 0 0 12px rgba(139, 92, 246, 0.15) !important;
+        }
+        html:not(.dark) .trend-card-btn h3 {
+            color: #0f172a !important;
+        }
+        html:not(.dark) .trend-card-btn p {
+            color: #475569 !important;
+        }
+
+        /* Right Detail Panel in Light Mode */
+        html:not(.dark) #trend-detail-filename {
+            color: #64748b !important;
+        }
+        html:not(.dark) #trend-detail-count {
+            background-color: rgba(139, 92, 246, 0.08) !important;
+            border-color: rgba(139, 92, 246, 0.2) !important;
+            color: #5b21b6 !important;
+        }
+        html:not(.dark) #trend-detail-body h4 {
+            color: #5b21b6 !important;
+        }
+
+        /* Trend Detail Articles - Clean flat design without artificial shadows */
+        #trend-detail-body article {
+            box-shadow: none !important;
+        }
+        html:not(.dark) #trend-detail-body article {
+            background-color: #ffffff !important;
+            background-image: none !important;
+            border-color: #e2e8f0 !important;
+            box-shadow: none !important;
+        }
+        html:not(.dark) #trend-detail-body article:hover {
+            background-color: #ffffff !important;
+            background-image: none !important;
+            border-color: rgba(139, 92, 246, 0.4) !important;
+            box-shadow: none !important;
+        }
+        html:not(.dark) #trend-detail-body article h5 {
+            color: #0f172a !important;
+            font-weight: 700 !important;
+        }
+        html:not(.dark) #trend-detail-body article p {
+            color: #1e293b !important;
+            font-weight: 400 !important;
+        }
+        html:not(.dark) #trend-detail-body article .border-t {
+            border-color: #f1f5f9 !important;
+        }
+        html:not(.dark) #trend-detail-body article a {
+            color: #6d28d9 !important;
+        }
+        html:not(.dark) #trend-detail-body article a:hover {
+            color: #4c1d95 !important;
+        }
+        html:not(.dark) #trend-detail-body article.trend-deep-dive-card {
+            background-color: #faf5ff !important;
+            background-image: none !important;
+            border-color: #d8b4fe !important;
+            box-shadow: none !important;
+        }
+        html:not(.dark) #trend-detail-body article.trend-deep-dive-card h5 {
+            color: #581c87 !important;
+            font-weight: 800 !important;
+        }
+        html:not(.dark) #trend-detail-body article.trend-deep-dive-card p {
+            color: #1e293b !important;
+        }
+
+        /* Macro Summary Card (총괄 거시경제 및 시장 환경) in Light Mode */
+        html:not(.dark) .macro-summary-card {
+            background: #ffffff !important;
+            border-left-color: #f59e0b !important;
+            border-color: #e2e8f0 !important;
+            box-shadow: none !important;
+        }
+        html:not(.dark) .macro-summary-card h3 {
+            color: #0f172a !important;
+        }
+        html:not(.dark) .macro-summary-card p {
+            color: #475569 !important;
+        }
+        html:not(.dark) .macro-intro-box {
+            background-color: #f8fafc !important;
+            border-color: #e2e8f0 !important;
+            color: #0f172a !important;
+            font-weight: 500 !important;
+        }
+        html:not(.dark) .macro-cat-heading {
+            color: #0f172a !important;
+        }
+        html:not(.dark) .macro-cat-card {
+            background-color: #f8fafc !important;
+            border-color: #e2e8f0 !important;
+            box-shadow: none !important;
+        }
+        html:not(.dark) .macro-cat-card:hover {
+            border-color: #f59e0b !important;
+            background-color: #ffffff !important;
+        }
+        html:not(.dark) .macro-cat-card .border-b {
+            border-color: #e2e8f0 !important;
+        }
+        html:not(.dark) .macro-cat-card h5 {
+            color: #b45309 !important;
+        }
+        html:not(.dark) .macro-cat-card p {
+            color: #0f172a !important;
+            font-weight: 500 !important;
+        }
+        html:not(.dark) .macro-flow-heading {
+            color: #b45309 !important;
+        }
+        html:not(.dark) .macro-flow-card {
+            background-color: #f8fafc !important;
+            border-color: #e2e8f0 !important;
+            color: #0f172a !important;
+            font-weight: 600 !important;
+            box-shadow: none !important;
+        }
+
+        /* Brief Overview 1번 섹션 in Light Mode */
+        html:not(.dark) .brief-overview-card {
+            background: #ffffff !important;
+            border-left-color: #8b5cf6 !important;
+            border-color: #e2e8f0 !important;
+            box-shadow: none !important;
+        }
+        html:not(.dark) .brief-overview-card h3 {
+            color: #0f172a !important;
+        }
+        html:not(.dark) .brief-overview-card p {
+            color: #475569 !important;
+        }
+        html:not(.dark) .brief-overview-item {
+            background-color: #f8fafc !important;
+            border-color: #e2e8f0 !important;
+            box-shadow: none !important;
+        }
+        html:not(.dark) .brief-overview-item:hover {
+            border-color: #8b5cf6 !important;
+            background-color: #ffffff !important;
+        }
+        html:not(.dark) .brief-overview-item .border-b {
+            border-color: #e2e8f0 !important;
+        }
+        html:not(.dark) .brief-overview-item span.text-violet-300 {
+            color: #6d28d9 !important;
+        }
+        html:not(.dark) .brief-overview-item p {
+            color: #0f172a !important;
+            font-weight: 500 !important;
+        }
+
+        /* 4. TAB: 스크랩 주요 기사 Light Mode Enhancements */
+        html:not(.dark) .list-item-btn {
+            background-color: rgba(255, 255, 255, 0.85) !important;
+            border-color: rgba(226, 232, 240, 0.9) !important;
+        }
+        html:not(.dark) .list-item-btn:hover {
+            background-color: rgba(240, 249, 255, 0.9) !important;
+            border-color: rgba(14, 165, 233, 0.4) !important;
+        }
+        html:not(.dark) .list-item-btn.border-sky-500\/50 {
+            background-color: #e0f2fe !important;
+            border-color: #0284c7 !important;
+            box-shadow: 0 0 12px rgba(14, 165, 233, 0.15) !important;
+        }
+        html:not(.dark) #article-detail-card {
+            background-color: rgba(255, 255, 255, 0.7) !important;
+            border-color: rgba(226, 232, 240, 0.9) !important;
+        }
+        html:not(.dark) #detail-snippet {
+            background-color: #f8fafc !important;
+            color: #334155 !important;
+            border-color: #e2e8f0 !important;
+        }
+    </style>
+</head>
+<body class="text-slate-100 p-4 md:p-8">
+    <div class="max-w-7xl mx-auto">
+        <!-- Header -->
+        <header class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4 pb-6 border-b border-white/5">
+            <div>
+                <div class="flex items-center gap-2 mb-1">
+                    <span class="inline-block w-3 h-3 rounded-full bg-brand-500 animate-pulse"></span>
+                    <span class="text-sm font-semibold tracking-wider text-brand-400 uppercase">Daily Briefing</span>
+                </div>
+                <h1 class="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-slate-950 via-slate-800 to-brand-700 dark:from-white dark:via-slate-100 dark:to-brand-400 bg-clip-text text-transparent">
+                    일일 브리핑 대시보드 <span class="text-xl md:text-2xl font-bold ml-2 text-slate-500 dark:text-slate-400">({{ today_date_str }})</span>
+                </h1>
+            </div>
+            <div class="flex items-center gap-3">
+                <!-- Theme Toggle Button -->
+                <button onclick="toggleTheme()" class="glass-card p-2.5 rounded-xl text-slate-300 hover:text-white hover:bg-white/5 transition-colors" title="테마 전환 (다크/라이트)">
+                    <i data-lucide="sun" id="theme-icon-sun" class="w-4 h-4 hidden dark:block text-amber-400"></i>
+                    <i data-lucide="moon" id="theme-icon-moon" class="w-4 h-4 block dark:hidden text-indigo-600"></i>
+                </button>
+                <div class="glass-card px-4 py-2 rounded-xl flex items-center gap-3 text-xs md:text-sm text-slate-300">
+                    <i data-lucide="clock" class="w-4 h-4 text-brand-400"></i>
+                    <span>업데이트 시간: <strong class="text-white font-medium">{{ generated_time }}</strong></span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Navigation Tabs -->
+        <nav class="flex flex-wrap gap-2 mb-8" aria-label="Tabs">
+            <button onclick="switchTab('tab-summary')" id="btn-tab-summary" class="tab-btn glass-card px-5 py-3 rounded-xl flex items-center gap-2.5 text-sm font-medium transition-all duration-200 border-brand-500/30 text-white bg-brand-600/20">
+                <i data-lucide="layout-dashboard" class="w-4 h-4 text-brand-400"></i>
+                종합 및 개인 자산
+            </button>
+            <button onclick="switchTab('tab-schedule')" id="btn-tab-schedule" class="tab-btn glass-card px-5 py-3 rounded-xl flex items-center gap-2.5 text-sm font-medium transition-all duration-200 text-slate-300 hover:text-white hover:bg-white/5">
+                <i data-lucide="calendar" class="w-4 h-4 text-emerald-400"></i>
+                이번주 주요 일정
+            </button>
+            <button onclick="switchTab('tab-weather')" id="btn-tab-weather" class="tab-btn glass-card px-5 py-3 rounded-xl flex items-center gap-2.5 text-sm font-medium transition-all duration-200 text-slate-300 hover:text-white hover:bg-white/5">
+                <i data-lucide="cloud-sun" class="w-4 h-4 text-amber-400"></i>
+                동탄 일주일 날씨
+            </button>
+            <button onclick="switchTab('tab-trends')" id="btn-tab-trends" class="tab-btn glass-card px-5 py-3 rounded-xl flex items-center gap-2.5 text-sm font-medium transition-all duration-200 text-slate-300 hover:text-white hover:bg-white/5">
+                <i data-lucide="trending-up" class="w-4 h-4 text-violet-400"></i>
+                경제동향
+            </button>
+        </nav>
+
+        <!-- MAIN CONTENTS -->
+        <main>
+            <!-- 1. TAB: 종합 및 개인 자산 -->
+            <div id="tab-summary" class="tab-content active space-y-8">
+                <!-- 핵심 자산 지표 (1.종합시트) -->
+                <div>
+                    <h2 class="text-xl font-bold mb-4 flex items-center gap-2">
+                        <i data-lucide="coins" class="w-5 h-5 text-brand-400"></i>
+                        핵심 자산 지표 (1.종합시트)
+                    </h2>
+                    
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                        <!-- 좌측: 내 자산 지표 (Highlight + Sub cards) -->
+                        <div class="lg:col-span-2 space-y-6">
+                            <!-- 중요 카드 2개 (Highlight) -->
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {% if assets_summary and assets_summary['headers'] %}
+                                    {% for i in range(assets_summary['headers']|length) %}
+                                        {% if assets_summary['headers'][i] in ['직전대비 수익금변동', '년초대비수익금'] %}
+                                        <div class="glass-card p-6 rounded-2xl border-l-4 border-brand-500 shadow-[0_4px_20px_rgba(139,92,246,0.15)] flex justify-between items-center relative overflow-hidden group">
+                                            <div class="z-10">
+                                                <span class="text-xs font-bold text-brand-300 uppercase tracking-wider block mb-1">
+                                                    {{ assets_summary['headers'][i] }}
+                                                </span>
+                                                <span class="text-2xl md:text-3xl font-extrabold tracking-tight text-white block">
+                                                    {{ assets_summary['values'][i] }}
+                                                </span>
+                                                {% if assets_summary['comparisons'] and assets_summary['comparisons'][i] and assets_summary['comparisons'][i]['text'] %}
+                                                <span class="text-sm font-bold font-mono inline-block mt-2 px-2 py-0.5 rounded bg-black/20 {{ assets_summary['comparisons'][i]['class'] }}">
+                                                    {{ assets_summary['comparisons'][i]['text'] }}
+                                                </span>
+                                                {% endif %}
+                                            </div>
+                                            <div class="p-3.5 rounded-2xl bg-brand-500/10 text-brand-400 z-10 group-hover:scale-110 transition-transform duration-300">
+                                                {% if assets_summary['headers'][i] == '직전대비 수익금변동' %}
+                                                    <i data-lucide="trending-up" class="w-8 h-8"></i>
+                                                {% else %}
+                                                    <i data-lucide="calendar-range" class="w-8 h-8"></i>
+                                                {% endif %}
+                                            </div>
+                                            <div class="absolute right-0 bottom-0 translate-x-4 translate-y-4 opacity-5 pointer-events-none">
+                                                <i data-lucide="activity" class="w-32 h-32 text-brand-500"></i>
+                                            </div>
+                                        </div>
+                                        {% endif %}
+                                    {% endfor %}
+                                {% endif %}
+                            </div>
+
+                            <!-- 일반 자산 카드들 (총자산, 년초대비수익률, 총누적수익, 미국/한국 수익률, 총누적수익률) -->
+                            <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+                                {% if assets_summary and assets_summary['headers'] %}
+                                    {% for i in range(assets_summary['headers']|length) %}
+                                        {% if assets_summary['headers'][i] not in ['직전대비 수익금변동', '년초대비수익금', 'KOSPI', 'S&P 500', '비트코인', '금', '원유'] %}
+                                        <div class="glass-card glass-card-hover p-4 rounded-xl flex flex-col justify-between">
+                                            <span class="text-[11px] font-semibold text-slate-400 mb-1.5 truncate" title="{{ assets_summary['headers'][i] }}">
+                                                {{ assets_summary['headers'][i] }}
+                                            </span>
+                                            <div>
+                                                <span class="text-base md:text-lg font-bold text-white break-all">
+                                                    {{ assets_summary['values'][i] }}
+                                                </span>
+                                                {% if assets_summary['comparisons'] and assets_summary['comparisons'][i] and assets_summary['comparisons'][i]['text'] %}
+                                                <span class="text-[10px] font-bold font-mono block mt-0.5 {{ assets_summary['comparisons'][i]['class'] }}">
+                                                    {{ assets_summary['comparisons'][i]['text'] }}
+                                                </span>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        {% endif %}
+                                    {% endfor %}
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- 우측: 글로벌 시장 지표 (별도 box, 흰색 정사각형 카드) -->
+                        <div class="lg:col-span-1 glass-card p-5 rounded-2xl flex flex-col justify-between border-slate-700/40 h-[380px]">
+                            <div>
+                                <h3 class="text-sm font-bold text-slate-300 mb-4 flex items-center gap-1.5">
+                                    <i data-lucide="globe" class="w-4 h-4 text-brand-400"></i>
+                                    글로벌 핵심 시장 지표
+                                </h3>
+                                <div class="flex flex-col gap-2.5">
+                                    {% if assets_summary and assets_summary['headers'] %}
+                                        {% for i in range(assets_summary['headers']|length) %}
+                                            {% if assets_summary['headers'][i] in ['KOSPI', 'S&P 500', '비트코인', '금', '원유'] %}
+                                            <div class="bg-white text-slate-900 border border-slate-200/80 shadow-sm px-4 py-2.5 rounded-xl flex justify-between items-center transition-all duration-200 hover:shadow-md">
+                                                <span class="text-sm font-black text-slate-500 uppercase tracking-wider">
+                                                    {{ assets_summary['headers'][i] }}
+                                                </span>
+                                                <div class="flex items-center gap-3">
+                                                    <span class="text-base font-black text-slate-900 font-mono">
+                                                        {{ assets_summary['values'][i] }}
+                                                    </span>
+                                                    {% if assets_summary['comparisons'] and assets_summary['comparisons'][i] and assets_summary['comparisons'][i]['text'] %}
+                                                        {% set comp_txt = assets_summary['comparisons'][i]['text'] %}
+                                                        {% set color_cls = "text-emerald-600" if '▲' in comp_txt else ("text-rose-600" if '▼' in comp_txt else "text-slate-500") %}
+                                                        <span class="text-xs font-bold font-mono {{ color_cls }}">
+                                                            {{ comp_txt }}
+                                                        </span>
+                                                    {% else %}
+                                                        <span class="text-xs font-semibold text-slate-400">-</span>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                            {% endif %}
+                                        {% endfor %}
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="text-[10px] text-slate-500 text-center mt-4 border-t border-slate-700/20 pt-3 flex items-center justify-center gap-1">
+                                <i data-lucide="info" class="w-3 h-3 text-slate-500"></i>
+                                <span>시장 지표는 일별 갱신 수치입니다.</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 거버닝 메시지 & Summary 현황 (종합 탭 하단 추가) -->
+                <div class="glass-card p-6 rounded-2xl border-l-4 border-brand-500 bg-brand-950/10 flex flex-col md:flex-row justify-between gap-6">
+                    <div class="md:w-3/5 space-y-2">
+                        <h3 class="text-base font-bold text-brand-400 flex items-center gap-2">
+                            <i data-lucide="message-square-quote" class="w-5 h-5"></i>
+                            오늘의 자산 브리핑 요약
+                        </h3>
+                        <p class="text-sm md:text-base text-slate-200 leading-relaxed font-medium">
+                            {{ governing_message }}
+                        </p>
+                    </div>
+                    <div class="md:w-2/5 border-t md:border-t-0 md:border-l border-white/5 pt-4 md:pt-0 md:pl-6 space-y-2">
+                        <h4 class="text-sm font-extrabold text-slate-400 uppercase tracking-wider">주요 핵심 요약 포인트</h4>
+                        <ul class="space-y-2 text-sm text-slate-300">
+                            {% for point in governing_summary %}
+                            <li class="flex items-start gap-1.5">
+                                <span class="text-brand-400 font-bold mt-0.5">•</span>
+                                <span class="leading-relaxed">{{ point }}</span>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+
+                {% if morning_brief and morning_brief.section1_overview %}
+                <!-- 오늘의 글로벌 전체 동향 요약 (모닝브리프 1번 섹션 연동 - Req 1) -->
+                <div class="brief-overview-card glass-card p-6 rounded-2xl border-l-4 border-violet-500 bg-gradient-to-r from-violet-950/20 via-slate-900/30 to-transparent space-y-4">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-white/5">
+                        <div class="flex items-center gap-2.5">
+                            <div class="w-8 h-8 rounded-lg bg-violet-500/15 border border-violet-500/30 flex items-center justify-center text-violet-400">
+                                <i data-lucide="newspaper" class="w-4 h-4"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-base font-bold text-white flex items-center gap-2">
+                                    <span>오늘의 글로벌 시장 전체 동향 요약</span>
+                                    <span class="text-[11px] font-semibold text-violet-400 bg-violet-500/10 px-2 py-0.5 rounded-full border border-violet-500/20">모닝브리프 {{ morning_brief.date }}</span>
+                                </h3>
+                                <p class="text-xs text-slate-400">구글 드라이브 0.Slip-box/모닝브리프 핵심 5대 내러티브 요약</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-5 gap-3">
+                        {% for item in morning_brief.section1_overview %}
+                        <div class="brief-overview-item p-4 rounded-xl bg-slate-900/40 border border-white/5 hover:border-violet-500/30 transition-all flex flex-col justify-start gap-2 group">
+                            <div class="flex items-center gap-2 pb-1.5 border-b border-white/5">
+                                <span class="w-5 h-5 rounded-full bg-violet-500/20 text-violet-300 font-extrabold text-xs flex items-center justify-center font-mono">{{ item.num }}</span>
+                                <span class="text-xs font-bold text-violet-300 group-hover:text-violet-200">
+                                    {% if item.num == '1' %}글로벌 매크로·규제
+                                    {% elif item.num == '2' %}빅테크·플랫폼
+                                    {% elif item.num == '3' %}클라우드·AI FCF
+                                    {% elif item.num == '4' %}모빌리티·인프라
+                                    {% else %}국내 플랫폼·자본재{% endif %}
+                                </span>
+                            </div>
+                            <p class="text-xs text-slate-200 leading-relaxed">
+                                {{ item.text }}
+                            </p>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- 내 보유자산 변동현황 & AI 분석 Box -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <!-- Left: Table (내 보유자산 변동현황) -->
+                    <div class="glass-card p-6 rounded-2xl lg:col-span-1 flex flex-col">
+                        <h3 class="text-lg font-bold mb-4 flex items-center gap-2 text-white">
+                            <i data-lucide="list-checks" class="w-5 h-5 text-brand-400"></i>
+                            내 보유자산 변동현황 (전일대비 ±3% 초과 변동)
+                        </h3>
+                        <div class="overflow-x-auto flex-grow max-h-[360px] overflow-y-auto pr-1">
+                            {% if high_volatility_assets and high_volatility_assets|length > 0 %}
+                                <table class="w-full text-left border-collapse">
+                                    <thead>
+                                        <tr class="border-b border-white/10 text-xs font-extrabold text-slate-400 uppercase tracking-wider">
+                                            <th class="pb-3 pl-3">항목</th>
+                                            <th class="pb-3 text-right">전일대비</th>
+                                            <th class="pb-3 text-right pr-3">수익률</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-white/5 text-sm">
+                                        {% for item in high_volatility_assets %}
+                                        <tr class="hover:bg-white/5 transition-colors">
+                                            <td class="py-3 pl-3 font-semibold text-slate-200 whitespace-nowrap truncate max-w-[150px] md:max-w-none">
+                                                {% if '(' in item.name %}
+                                                    {% set parts = item.name.split('(') %}
+                                                    <span class="text-sm font-bold">{{ parts[0].strip() }}</span>
+                                                {% else %}
+                                                    <span class="text-sm font-bold">{{ item.name }}</span>
+                                                {% endif %}
+                                            </td>
+                                            <td class="py-3 text-right font-mono w-32 whitespace-nowrap">
+                                                {% if item.change_float > 0 %}
+                                                    <span class="text-emerald-400 font-bold">▲ {{ item.change }}</span>
+                                                {% else %}
+                                                    <span class="text-rose-400 font-bold">▼ {{ item.change }}</span>
+                                                {% endif %}
+                                            </td>
+                                            <td class="py-3 text-right font-mono pr-3 w-32 whitespace-nowrap">
+                                                {% if '-' in item.yield %}
+                                                    <span class="text-rose-400 font-medium">{{ item.yield }}</span>
+                                                {% elif item.yield == '0%' or item.yield == '0.00%' %}
+                                                    <span class="text-slate-400 font-medium">{{ item.yield }}</span>
+                                                {% else %}
+                                                    <span class="text-emerald-400 font-medium">+{{ item.yield }}</span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            {% else %}
+                                <div class="py-12 text-center text-slate-500 flex flex-col items-center justify-center gap-2">
+                                    <i data-lucide="check-circle-2" class="w-8 h-8 text-slate-600"></i>
+                                    <span class="text-sm font-medium">전일대비 ±3% 이상 급변동한 종목이 없습니다.</span>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Right: AI Analysis Box -->
+                    <div class="glass-card p-6 rounded-2xl lg:col-span-2 flex flex-col border-l-4 border-brand-500/50 bg-slate-800/10">
+                        <h3 class="text-lg font-bold mb-4 flex items-center gap-2 text-white">
+                            <i data-lucide="lightbulb" class="w-5 h-5 text-brand-400 animate-pulse"></i>
+                            급변동 종목 요인 분석 및 투자 가이드
+                        </h3>
+                        <div class="overflow-y-auto max-h-[360px] text-slate-300 text-sm leading-relaxed space-y-3 pr-1">
+                            {{ asset_analysis_box | safe }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. TAB: 이번주 주요 일정 -->
+            <div id="tab-schedule" class="tab-content space-y-6">
+                <!-- AI 브리핑 의견 카드 -->
+                <div class="glass-card p-5 rounded-2xl border-l-4 border-emerald-500 flex items-start gap-4">
+                    <div class="p-3 rounded-xl bg-emerald-500/10 text-emerald-400">
+                        <i data-lucide="message-square" class="w-6 h-6"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-bold text-emerald-400 mb-1">📅 주간 일정 브리핑</h3>
+                        <p class="text-sm md:text-base text-slate-200 leading-relaxed font-medium">
+                            {{ calendar_insight }}
+                        </p>
+                    </div>
+                </div>
+
+                <!-- 주간 달력 그리드 -->
+                <div class="grid grid-cols-1 md:grid-cols-7 gap-4">
+                    {% if weekly_schedule %}
+                        {% for day in weekly_schedule %}
+                        <div class="glass-card p-4 rounded-2xl flex flex-col min-h-[320px] transition-all duration-300 {% if day.is_today %}border-brand-500/40 bg-brand-500/5 shadow-[0_0_15px_rgba(139,92,246,0.15)]{% else %}hover:border-white/10{% endif %}">
+                            <!-- 요일 헤더 -->
+                            <div class="flex items-center justify-between pb-3 mb-3 border-b border-white/5">
+                                <span class="text-xs font-semibold text-slate-400 font-mono">{{ day.date }}</span>
+                                <span class="text-sm font-bold {% if day.is_today %}text-brand-400{% else %}text-white{% endif %}">
+                                    {{ day.day_of_week }}요일
+                                </span>
+                            </div>
+                            
+                            <!-- 일정 목록 -->
+                            <div class="flex-grow space-y-3 overflow-y-auto max-h-[260px] pr-1">
+                                {% if day.events and day.events|length > 0 %}
+                                    {% for event in day.events %}
+                                    <div class="p-3 rounded-xl bg-slate-800/50 border border-white/5 hover:border-emerald-500/30 transition-all duration-200 group">
+                                        <div class="flex items-center gap-1 mb-1.5">
+                                            <span class="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                                            <span class="text-[10px] font-bold text-emerald-400 font-mono">
+                                                {{ event.time }}
+                                            </span>
+                                        </div>
+                                        <h4 class="text-xs font-bold text-white leading-tight group-hover:text-emerald-300 transition-colors">
+                                            {{ event.summary }}
+                                        </h4>
+                                        {% if event.description %}
+                                        <p class="text-[10px] text-slate-400 mt-1 line-clamp-2 leading-relaxed" title="{{ event.description }}">
+                                            {{ event.description }}
+                                        </p>
+                                        {% endif %}
+                                        {% if event.location %}
+                                        <div class="flex items-center gap-1 text-[9px] text-slate-500 mt-1.5">
+                                            <i data-lucide="map-pin" class="w-2.5 h-2.5"></i>
+                                            <span class="truncate max-w-[120px]">{{ event.location }}</span>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                    {% endfor %}
+                                {% else %}
+                                    <div class="flex flex-col items-center justify-center h-full text-slate-600 py-12">
+                                        <i data-lucide="calendar" class="w-4 h-4 mb-1 text-slate-600/50"></i>
+                                        <span class="text-[10px] font-medium">일정 없음</span>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="col-span-full glass-card p-8 text-center text-slate-400">
+                            캘린더 스케줄 로드 실패
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+            </div>
+
+            <!-- 3. TAB: 동탄 일주일 날씨 -->
+            <div id="tab-weather" class="tab-content space-y-8">
+                <!-- Weather Header & Grid -->
+                <div class="grid grid-cols-1 md:grid-cols-7 gap-4">
+                    {% if weather and weather.daily %}
+                        {% for day in weather.daily %}
+                        <div class="glass-card {% if loop.index0 == 0 %}bg-gradient-to-b from-brand-600/10 via-slate-800/40 to-slate-800/40 border-brand-500/20{% endif %} p-4 rounded-2xl flex flex-col items-center text-center justify-between glass-card-hover min-h-[180px]">
+                            <div class="text-xs font-semibold text-slate-400 mb-1">
+                                {% if loop.index0 == 0 %}
+                                    <span class="text-brand-400 font-bold">오늘</span>
+                                {% else %}
+                                    {{ day.day_of_week }}
+                                {% endif %}
+                            </div>
+                            <div class="text-xs text-slate-500 font-mono mb-2">{{ day.date }}</div>
+                            
+                            <!-- Weather Icon & Description -->
+                            <div class="my-2 flex flex-col items-center">
+                                <div class="text-3xl mb-1 text-white">
+                                    {{ day.icon_emoji }}
+                                </div>
+                                <span class="text-xs font-medium text-slate-300">{{ day.desc }}</span>
+                            </div>
+
+                            <!-- Temperature and Rain Prob -->
+                            <div class="mt-2 w-full">
+                                <div class="text-sm font-bold text-white flex justify-center gap-1.5">
+                                    <span class="text-rose-400">{{ day.temp_max }}°</span>
+                                    <span class="text-slate-400">/</span>
+                                    <span class="text-sky-400">{{ day.temp_min }}°</span>
+                                </div>
+                                {% if day.rain_prob > 0 %}
+                                <div class="flex items-center justify-center gap-0.5 text-[10px] text-sky-400 mt-1 font-medium bg-sky-950/40 px-1.5 py-0.5 rounded-full w-fit mx-auto border border-sky-900/30">
+                                    <i data-lucide="umbrella" class="w-2.5 h-2.5"></i>
+                                    <span>{{ day.rain_prob }}%</span>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="col-span-full glass-card p-12 text-center text-slate-400">
+                            날씨 데이터를 불러오지 못했습니다. 인터넷 연결을 확인해 주세요.
+                        </div>
+                    {% endif %}
+                </div>
+
+                <!-- Temperature Trend Chart -->
+                <div class="glass-card p-6 rounded-2xl">
+                    <h3 class="text-lg font-bold mb-4 flex items-center gap-2">
+                        <i data-lucide="trending-up" class="w-5 h-5 text-amber-400"></i>
+                        일주일 기온 변화 추이 (경기도 화성시 동탄)
+                    </h3>
+                    <div class="relative h-[250px] w-full">
+                        <canvas id="weatherTrendChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 4. TAB: 경제동향 (모닝브리프 거시경제 & Google Alerts 마크다운 인덱스 연동) -->
+            <div id="tab-trends" class="tab-content space-y-6">
+                <!-- Sub Header Bar -->
+                <div class="glass-card p-5 md:p-6 rounded-2xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-l-4 border-violet-500">
+                    <div>
+                        <div class="flex items-center gap-2 mb-1.5">
+                            <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-violet-500/10 text-violet-400 border border-violet-500/30 flex items-center gap-1.5">
+                                <i data-lucide="trending-up" class="w-3.5 h-3.5"></i>
+                                모닝브리프 & Google Alerts 마크다운 연동
+                            </span>
+                            <span class="text-xs text-slate-400 font-mono">업데이트: {{ trends_data.last_updated if trends_data else today_date_str }}</span>
+                        </div>
+                        <h2 class="text-xl md:text-2xl font-extrabold text-white flex items-center gap-2">
+                            <span>경제동향 브리핑 대시보드</span>
+                            <span class="text-xs md:text-sm font-semibold text-slate-400 font-normal">({{ trends_data.entries|length if trends_data and trends_data.entries else 0 }}개 키워드 추적)</span>
+                        </h2>
+                    </div>
+                    <div class="flex items-center gap-3 w-full md:w-auto">
+                        <a href="https://drive.google.com/file/d/1hbEGqTY3FfPEHgDVwoNVnF1qntgHFJEg/view?usp=drive_link" target="_blank" rel="noopener noreferrer" class="glass-card px-3.5 py-2 rounded-xl text-xs font-medium text-slate-300 hover:text-white hover:border-violet-500/40 flex items-center gap-1.5 transition-colors">
+                            <i data-lucide="file-text" class="w-4 h-4 text-violet-400"></i>
+                            <span>_주요동향_인덱스.md 원본 열기</span>
+                            <i data-lucide="external-link" class="w-3 h-3 text-slate-500"></i>
+                        </a>
+                    </div>
+                </div>
+
+                {% if morning_brief and morning_brief.section2_macro %}
+                <!-- 2번: 총괄 거시경제 및 시장환경 가로형 와이드 박스 (Req 2) -->
+                <div class="macro-summary-card glass-card p-6 rounded-2xl border-l-4 border-amber-500 bg-gradient-to-r from-amber-950/15 via-slate-900/30 to-transparent space-y-5">
+                    <div class="flex items-center justify-between gap-3 pb-3 border-b border-white/5">
+                        <div class="flex items-center gap-2.5">
+                            <div class="w-8 h-8 rounded-lg bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400">
+                                <i data-lucide="globe" class="w-4 h-4"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-base font-bold text-white flex items-center gap-2">
+                                    <span>총괄 거시경제 및 시장 환경 (Executive Summary)</span>
+                                    <span class="text-[11px] font-semibold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">{{ morning_brief.date }}</span>
+                                </h3>
+                                <p class="text-xs text-slate-400">글로벌 5대 변곡점 및 핵심 마크로 지표 종합 분석</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {% if morning_brief.section2_macro.intro %}
+                    <p class="macro-intro-box text-sm text-slate-200 leading-relaxed font-medium bg-white/5 p-4 rounded-xl border border-white/5">
+                        {{ morning_brief.section2_macro.intro }}
+                    </p>
+                    {% endif %}
+
+                    {% if morning_brief.section2_macro.categories %}
+                    <!-- 핵심 마크로 5대 카테고리 가로형 그리드 (위로 재배치 & 상단 정렬 적용) -->
+                    <div class="space-y-2 pt-1">
+                        <h4 class="macro-cat-heading text-xs font-extrabold text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
+                            <i data-lucide="layers" class="w-3.5 h-3.5 text-amber-400"></i>
+                            핵심 마크로 지표 및 시장 동향 요약
+                        </h4>
+                        <div class="grid grid-cols-1 md:grid-cols-5 gap-3">
+                            {% for cat in morning_brief.section2_macro.categories %}
+                            <div class="macro-cat-card p-4 rounded-xl bg-slate-900/40 border border-white/10 hover:border-amber-500/30 transition-all flex flex-col justify-start gap-2">
+                                <div class="flex items-center gap-1.5 pb-1.5 border-b border-white/5">
+                                    <span class="w-2 h-2 rounded-full bg-amber-400 flex-shrink-0"></span>
+                                    <h5 class="text-xs font-bold text-amber-300 font-mono">{{ cat.name }}</h5>
+                                </div>
+                                <p class="text-xs text-slate-200 leading-relaxed">
+                                    {{ cat.text }}
+                                </p>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    {% if morning_brief.section2_macro.flows %}
+                    <!-- 5대 변곡점 플로우차트 -->
+                    <div class="space-y-2 pt-1">
+                        <h4 class="macro-flow-heading text-xs font-extrabold text-amber-300 uppercase tracking-wider flex items-center gap-1.5">
+                            <i data-lucide="git-commit" class="w-3.5 h-3.5"></i>
+                            핵심 5대 변곡점 전개도
+                        </h4>
+                        <div class="grid grid-cols-1 md:grid-cols-5 gap-2.5">
+                            {% for flow in morning_brief.section2_macro.flows %}
+                            <div class="macro-flow-card p-3 rounded-xl bg-slate-900/50 border border-white/5 text-xs text-slate-300 flex items-center justify-center text-center font-mono leading-relaxed">
+                                {{ flow }}
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+                {% endif %}
+
+                <!-- 2-Column Split Layout -->
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                    <!-- Left: Keyword Index List -->
+                    <div class="lg:col-span-5 xl:col-span-4 glass-card p-5 rounded-2xl flex flex-col h-[780px]">
+                        <!-- Search & Filter Controls -->
+                        <div class="space-y-3 pb-4 border-b border-white/5">
+                            <!-- Search input -->
+                            <div class="relative">
+                                <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2"></i>
+                                <input type="text" id="trend-search-input" oninput="filterTrends()" placeholder="키워드 또는 내용 검색..." class="w-full bg-slate-900/40 border border-white/10 rounded-xl pl-9 pr-4 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-violet-500/50 transition-colors">
+                            </div>
+                            <!-- Direction Filters -->
+                            <div class="flex items-center gap-1.5">
+                                <button onclick="setTrendDirectionFilter('all')" id="filter-dir-all" class="trend-dir-filter-btn px-2.5 py-1 rounded-lg text-xs font-medium bg-violet-600/30 text-white border border-violet-500/40 transition-all">전체 ({{ trends_data.entries|length if trends_data and trends_data.entries else 0 }})</button>
+                                <button onclick="setTrendDirectionFilter('▲')" id="filter-dir-up" class="trend-dir-filter-btn px-2.5 py-1 rounded-lg text-xs font-medium text-slate-400 hover:text-white bg-white/5 border border-white/5 transition-all flex items-center gap-1">
+                                    <span class="text-emerald-400 font-bold">▲</span> 상승
+                                </button>
+                                <button onclick="setTrendDirectionFilter('▼')" id="filter-dir-down" class="trend-dir-filter-btn px-2.5 py-1 rounded-lg text-xs font-medium text-slate-400 hover:text-white bg-white/5 border border-white/5 transition-all flex items-center gap-1">
+                                    <span class="text-rose-400 font-bold">▼</span> 하락
+                                </button>
+                                <button onclick="setTrendDirectionFilter('↔')" id="filter-dir-flat" class="trend-dir-filter-btn px-2.5 py-1 rounded-lg text-xs font-medium text-slate-400 hover:text-white bg-white/5 border border-white/5 transition-all flex items-center gap-1">
+                                    <span class="text-slate-400 font-bold">↔</span> 중립
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Scrollable Keyword Card List -->
+                        <div id="trend-cards-container" class="flex-grow overflow-y-auto space-y-2.5 pt-4 pr-1">
+                            {% if trends_data and trends_data.entries %}
+                                {% for entry in trends_data.entries %}
+                                <div onclick="selectTrend('{{ entry.id }}')" id="trend-card-{{ entry.id }}" data-id="{{ entry.id }}" data-keyword="{{ entry.keyword }}" data-direction="{{ entry.direction }}" data-summary="{{ entry.summary }}" class="trend-card-btn p-3.5 rounded-xl border border-white/5 bg-slate-900/30 hover:border-violet-500/30 hover:bg-violet-500/5 cursor-pointer transition-all duration-200 group">
+                                    <div class="flex items-center justify-between gap-2 mb-1.5">
+                                        <h3 class="text-sm font-bold text-slate-200 group-hover:text-white flex items-center gap-1.5 transition-colors">
+                                            <span>{{ entry.keyword }}</span>
+                                        </h3>
+                                        <div class="flex items-center gap-1.5">
+                                            {% if entry.direction == '▲' %}
+                                                <span class="text-[11px] font-bold px-2 py-0.5 rounded-md bg-emerald-500/10 border border-emerald-500/30 text-emerald-400">▲ 상승</span>
+                                            {% elif entry.direction == '▼' %}
+                                                <span class="text-[11px] font-bold px-2 py-0.5 rounded-md bg-rose-500/10 border border-rose-500/30 text-rose-400">▼ 하락</span>
+                                            {% else %}
+                                                <span class="text-[11px] font-bold px-2 py-0.5 rounded-md bg-slate-500/10 border border-slate-500/30 text-slate-400">↔ 중립</span>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    <p class="text-xs text-slate-400 line-clamp-2 leading-relaxed group-hover:text-slate-300">
+                                        {{ entry.summary }}
+                                    </p>
+                                </div>
+                                {% endfor %}
+                            {% else %}
+                                <div class="py-16 text-center text-slate-500 text-xs">
+                                    주요 동향 인덱스 데이터가 없습니다.
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Right: Detailed Markdown Viewer -->
+                    <div class="lg:col-span-7 xl:col-span-8 glass-card p-6 md:p-8 rounded-2xl flex flex-col h-[780px] border-l-4 border-violet-500 relative overflow-hidden">
+                        <!-- Top Detail Header -->
+                        <div id="trend-detail-header" class="pb-5 mb-5 border-b border-white/10 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                            <div>
+                                <div class="flex items-center gap-2 mb-1">
+                                    <span id="trend-detail-badge" class="text-xs font-bold px-2.5 py-0.5 rounded-md bg-slate-500/10 border border-slate-500/30 text-slate-400">
+                                        ↔ 중립
+                                    </span>
+                                    <span id="trend-detail-filename" class="text-xs text-slate-400 font-mono">
+                                        NVIDIA.md
+                                    </span>
+                                </div>
+                                <h3 id="trend-detail-title" class="text-2xl md:text-3xl font-extrabold text-white tracking-tight">
+                                    NVIDIA
+                                </h3>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <span id="trend-detail-count" class="text-xs text-slate-400 bg-white/5 border border-white/5 px-3 py-1.5 rounded-xl flex items-center gap-1.5">
+                                    <i data-lucide="newspaper" class="w-3.5 h-3.5 text-violet-400"></i>
+                                    <span id="trend-detail-count-text">브리핑 뉴스 목록</span>
+                                </span>
+                            </div>
+                        </div>
+
+                        <!-- Detail Content Scroll Area -->
+                        <div id="trend-detail-body" class="flex-grow overflow-y-auto pr-2 space-y-6">
+                            <!-- Dynamic Content Inserted by JS -->
+                        </div>
+
+                        <!-- Empty State -->
+                        <div id="trend-detail-empty" class="hidden flex-col items-center justify-center h-full text-slate-400 py-16 gap-3">
+                            <i data-lucide="file-question" class="w-10 h-10 text-slate-500"></i>
+                            <p class="text-sm font-medium">좌측 목록에서 열람할 키워드를 선택해 주세요.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Footer -->
+        <footer class="mt-16 pt-6 border-t border-white/5 text-center text-xs text-slate-500 flex flex-col md:flex-row justify-between items-center gap-4 pb-8">
+            <p>© 2026 Daily Briefing Dashboard. Crafted with Premium Glassmorphism UI.</p>
+            <div class="flex gap-4">
+                <span class="hover:text-slate-400 transition-colors cursor-pointer">안전한 로컬 보안 데이터 사용</span>
+                <span>•</span>
+                <span class="hover:text-slate-400 transition-colors cursor-pointer">자동화 스크립트 연결 완료</span>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Active Lucide Icons -->
+    <script>
+        // Sync theme across different tabs or windows
+        window.addEventListener('storage', (e) => {
+            if (e.key === 'theme') {
+                applyTheme(e.newValue);
+            }
+        });
+
+        function applyTheme(theme) {
+            const html = document.documentElement;
+            if (theme === 'light') {
+                html.classList.remove('dark');
+            } else {
+                html.classList.add('dark');
+            }
+            // Re-create icons to ensure proper rendering under new class
+            lucide.createIcons();
+        }
+
+        function toggleTheme() {
+            const html = document.documentElement;
+            const currentTheme = html.classList.contains('dark') ? 'dark' : 'light';
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            
+            localStorage.setItem('theme', newTheme);
+            applyTheme(newTheme);
+        }
+
+        // Initialize icons on load
+        lucide.createIcons();
+
+        // TAB SWITCH FUNCTION
+        function switchTab(tabId) {
+            // Hide all contents
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            
+            // Deactivate all buttons
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('text-white', 'bg-brand-600/20', 'border-brand-500/30');
+                btn.classList.add('text-slate-300', 'hover:text-white', 'hover:bg-white/5');
+            });
+
+            // Show current tab
+            const targetContent = document.getElementById(tabId);
+            if (targetContent) {
+                targetContent.classList.add('active');
+            }
+
+            // Highlight current button
+            const targetBtn = document.getElementById('btn-' + tabId);
+            if (targetBtn) {
+                targetBtn.classList.remove('text-slate-300', 'hover:text-white', 'hover:bg-white/5');
+                targetBtn.classList.add('text-white', 'bg-brand-600/20', 'border-brand-500/30');
+            }
+        }
+
+
+
+        {% if weather and weather.daily %}
+        // Line Chart for weather temperature trend
+        const ctxWeather = document.getElementById('weatherTrendChart');
+        if (ctxWeather) {
+            const days = [];
+            const maxTemps = [];
+            const minTemps = [];
+
+            {% for day in weather.daily %}
+                days.push("{{ day.date }} ({{ day.day_of_week }})");
+                maxTemps.push(parseFloat("{{ day.temp_max }}"));
+                minTemps.push(parseFloat("{{ day.temp_min }}"));
+            {% endfor %}
+
+            new Chart(ctxWeather, {
+                type: 'line',
+                data: {
+                    labels: days,
+                    datasets: [
+                        {
+                            label: '최고 기온 (°C)',
+                            data: maxTemps,
+                            borderColor: '#f43f5e',
+                            backgroundColor: 'rgba(244, 63, 94, 0.1)',
+                            borderWidth: 3,
+                            tension: 0.3,
+                            fill: true,
+                            pointBackgroundColor: '#f43f5e',
+                            pointRadius: 4,
+                            pointHoverRadius: 6
+                        },
+                        {
+                            label: '최저 기온 (°C)',
+                            data: minTemps,
+                            borderColor: '#38bdf8',
+                            backgroundColor: 'rgba(56, 189, 248, 0.05)',
+                            borderWidth: 3,
+                            tension: 0.3,
+                            fill: true,
+                            pointBackgroundColor: '#38bdf8',
+                            pointRadius: 4,
+                            pointHoverRadius: 6
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            labels: {
+                                color: '#94a3b8',
+                                font: {
+                                    size: 12,
+                                    family: 'Pretendard'
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.05)'
+                            },
+                            ticks: {
+                                color: '#94a3b8',
+                                font: {
+                                    family: 'Pretendard'
+                                }
+                            }
+                        },
+                        y: {
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.05)'
+                            },
+                            ticks: {
+                                color: '#94a3b8',
+                                font: {
+                                    family: 'Pretendard'
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        {% endif %}
+
+        // Google Alerts list-detail navigation helper
+        function selectArticle(idx) {
+            // Remove active style from all list items
+            document.querySelectorAll('.list-item-btn').forEach(item => {
+                item.classList.remove('border-sky-500/50', 'bg-sky-500/10', 'shadow-[0_0_15px_rgba(14,165,233,0.1)]');
+                item.classList.add('border-white/5', 'bg-slate-900/20');
+            });
+            
+            // Add active style to selected item
+            const selectedItem = document.getElementById(`list-item-${idx}`);
+            if (selectedItem) {
+                selectedItem.classList.remove('border-white/5', 'bg-slate-900/20');
+                selectedItem.classList.add('border-sky-500/50', 'bg-sky-500/10', 'shadow-[0_0_15px_rgba(14,165,233,0.1)]');
+                
+                // Extract data attributes
+                const topic = selectedItem.getAttribute('data-topic');
+                const title = selectedItem.getAttribute('data-title');
+                const snippet = selectedItem.getAttribute('data-snippet');
+                const link = selectedItem.getAttribute('data-link');
+                const sentiment = selectedItem.getAttribute('data-sentiment');
+                
+                // Update detail elements
+                document.getElementById('detail-topic').innerText = topic;
+                document.getElementById('detail-title').innerText = title;
+                document.getElementById('detail-snippet').innerText = snippet;
+                document.getElementById('detail-link-btn').setAttribute('href', link);
+                
+                // Set sentiment badge
+                const badgeContainer = document.getElementById('detail-sentiment-badge');
+                let badgeHtml = '';
+                if (sentiment === '긍정') {
+                    badgeHtml = `<span class="text-[10px] md:text-xs bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-bold px-2.5 py-1 rounded-full flex items-center gap-1.5">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>긍정</span>`;
+                } else if (sentiment === '부정') {
+                    badgeHtml = `<span class="text-[10px] md:text-xs bg-rose-500/10 border border-rose-500/30 text-rose-400 font-bold px-2.5 py-1 rounded-full flex items-center gap-1.5">
+                        <span class="w-1.5 h-1.5 rounded-full bg-rose-400 animate-pulse"></span>부정</span>`;
+                } else {
+                    badgeHtml = `<span class="text-[10px] md:text-xs bg-slate-500/10 border border-slate-500/30 text-slate-400 font-bold px-2.5 py-1 rounded-full flex items-center gap-1.5">
+                        <span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span>중립</span>`;
+                }
+                badgeContainer.innerHTML = badgeHtml;
+                
+                // Toggle empty state / content visibility
+                document.getElementById('detail-empty-state').classList.add('hidden');
+                document.getElementById('detail-content').classList.remove('hidden');
+                document.getElementById('detail-content').classList.add('flex');
+                
+                // Trigger lucide icon update
+                if (typeof lucide !== 'undefined') {
+                    lucide.createIcons();
+                }
+            }
+        }
+
+        // Auto select first article on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            const firstItem = document.querySelector('.list-item-btn');
+            if (firstItem) {
+                const idx = firstItem.getAttribute('data-idx');
+                selectArticle(idx);
+            }
+
+            // Auto select first trend keyword on page load
+            if (typeof trendsData !== 'undefined' && trendsData && trendsData.entries && trendsData.entries.length > 0) {
+                selectTrend(trendsData.entries[0].id);
+            }
+        });
+
+        // ==========================================
+        // KEY TRENDS (주요 동향) INTERACTION HELPER
+        // ==========================================
+        const trendsData = {{ trends_data | tojson if trends_data else '{}' }};
+        let currentTrendDirectionFilter = 'all';
+
+        function selectTrend(trendId) {
+            if (!trendsData || !trendsData.details) return;
+            const detail = trendsData.details[trendId];
+            if (!detail) return;
+
+            // Highlight active left card
+            document.querySelectorAll('.trend-card-btn').forEach(btn => {
+                btn.classList.remove('border-violet-500/50', 'bg-violet-500/15', 'shadow-[0_0_20px_rgba(139,92,246,0.18)]');
+                btn.classList.add('border-white/5', 'bg-slate-900/30');
+            });
+
+            const activeCard = document.getElementById(`trend-card-${trendId}`);
+            if (activeCard) {
+                activeCard.classList.remove('border-white/5', 'bg-slate-900/30');
+                activeCard.classList.add('border-violet-500/50', 'bg-violet-500/15', 'shadow-[0_0_20px_rgba(139,92,246,0.18)]');
+            }
+
+            // Update Header Info
+            const titleEl = document.getElementById('trend-detail-title');
+            const filenameEl = document.getElementById('trend-detail-filename');
+            const badgeEl = document.getElementById('trend-detail-badge');
+            const countTextEl = document.getElementById('trend-detail-count-text');
+
+            if (titleEl) titleEl.innerText = detail.keyword;
+            if (filenameEl) filenameEl.innerText = detail.doc_filename || `${detail.keyword}.md`;
+
+            if (badgeEl) {
+                if (detail.direction === '▲') {
+                    badgeEl.className = "text-xs font-bold px-2.5 py-0.5 rounded-md bg-emerald-500/10 border border-emerald-500/30 text-emerald-400";
+                    badgeEl.innerText = "▲ 상승";
+                } else if (detail.direction === '▼') {
+                    badgeEl.className = "text-xs font-bold px-2.5 py-0.5 rounded-md bg-rose-500/10 border border-rose-500/30 text-rose-400";
+                    badgeEl.innerText = "▼ 하락";
+                } else {
+                    badgeEl.className = "text-xs font-bold px-2.5 py-0.5 rounded-md bg-slate-500/10 border border-slate-500/30 text-slate-400";
+                    badgeEl.innerText = "↔ 중립";
+                }
+            }
+
+            const bodyEl = document.getElementById('trend-detail-body');
+            const emptyEl = document.getElementById('trend-detail-empty');
+
+            if (!detail.sections || detail.sections.length === 0) {
+                if (bodyEl) bodyEl.innerHTML = `
+                    <div class="py-16 text-center text-slate-500 flex flex-col items-center justify-center gap-3">
+                        <i data-lucide="file-text" class="w-10 h-10 text-slate-600"></i>
+                        <p class="text-sm font-medium">작성된 일별 상세 동향이 아직 없습니다.</p>
+                        <p class="text-xs text-slate-600">Google Alerts 수집 시 자동으로 업데이트됩니다.</p>
+                    </div>`;
+                if (countTextEl) countTextEl.innerText = "브리핑 내역 없음";
+                if (typeof lucide !== 'undefined') lucide.createIcons();
+                return;
+            }
+
+            // Count total news items
+            let totalItems = 0;
+            detail.sections.forEach(s => totalItems += (s.items ? s.items.length : 0));
+            if (countTextEl) countTextEl.innerText = `총 ${detail.sections.length}일 / ${totalItems}건 브리핑`;
+
+            // Build Date Sections HTML
+            let html = '';
+            detail.sections.forEach((sec, sIdx) => {
+                html += `
+                <div class="space-y-3">
+                    <div class="flex items-center gap-2 pb-2 border-b border-white/5">
+                        <div class="w-2 h-2 rounded-full bg-violet-400"></div>
+                        <h4 class="text-sm font-extrabold text-violet-300 font-mono tracking-wide flex items-center gap-1.5">
+                            <i data-lucide="calendar" class="w-3.5 h-3.5 text-violet-400"></i>
+                            ${sec.date}
+                        </h4>
+                        <span class="text-[11px] text-slate-500 ml-auto font-medium">${sec.items ? sec.items.length : 0}건 요약</span>
+                    </div>
+                    <div class="space-y-2.5">`;
+
+                if (sec.items && sec.items.length > 0) {
+                    sec.items.forEach(item => {
+                        const isDeepDive = item.is_deep_dive;
+                        const cardClass = isDeepDive ? 'trend-deep-dive-card' : 'trend-article-card';
+                        const cardBg = isDeepDive 
+                            ? 'bg-violet-950/20 border-violet-500/30' 
+                            : 'bg-slate-900/40 border-white/10 hover:border-violet-500/30';
+                        const titleColor = isDeepDive ? 'text-violet-200 font-extrabold' : 'text-white font-bold group-hover:text-violet-300';
+                        const sourceBadge = isDeepDive
+                            ? `<span class="text-[11px] font-bold text-violet-300 bg-violet-600/30 px-2 py-0.5 rounded-md font-mono border border-violet-500/40 flex items-center gap-1"><i data-lucide="sparkles" class="w-3 h-3"></i>모닝브리프 심층분석</span>`
+                            : (item.source ? `<span class="text-[11px] font-semibold text-violet-400 bg-violet-500/10 px-2 py-0.5 rounded-md font-mono border border-violet-500/20 whitespace-nowrap">${item.source}</span>` : '');
+                        const formattedBody = (item.body || '').replace(/\n/g, '<br>');
+
+                        html += `
+                        <article class="p-4 rounded-xl border ${cardClass} ${cardBg} transition-all duration-200 group">
+                            <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+                                <h5 class="text-sm ${titleColor} transition-colors leading-snug flex-grow">
+                                    ${item.title}
+                                </h5>
+                                ${sourceBadge}
+                            </div>
+                            ${item.body ? `
+                            <p class="text-xs text-slate-200 leading-relaxed mb-3">
+                                ${formattedBody}
+                            </p>` : ''}
+                            ${item.link ? `
+                            <div class="flex items-center justify-end pt-2 border-t border-white/5">
+                                <a href="${item.link}" target="_blank" rel="noopener noreferrer" class="text-xs text-violet-400 hover:text-violet-300 font-semibold flex items-center gap-1 hover:underline">
+                                    <span>${isDeepDive ? '모닝브리프 보고서 원문 열기' : '기사 원문 읽기'}</span>
+                                    <i data-lucide="arrow-up-right" class="w-3.5 h-3.5"></i>
+                                </a>
+                            </div>` : ''}
+                        </article>`;
+                    });
+                } else if (sec.raw_lines && sec.raw_lines.length > 0) {
+                    html += `
+                    <div class="p-4 rounded-xl bg-slate-900/40 border border-white/5 text-xs text-slate-300 space-y-1.5">
+                        ${sec.raw_lines.map(l => `<p>${l}</p>`).join('')}
+                    </div>`;
+                }
+
+                html += `
+                    </div>
+                </div>`;
+            });
+
+            if (bodyEl) bodyEl.innerHTML = html;
+            if (typeof lucide !== 'undefined') {
+                lucide.createIcons();
+            }
+        }
+
+        function setTrendDirectionFilter(dir) {
+            currentTrendDirectionFilter = dir;
+            const btns = {
+                'all': document.getElementById('filter-dir-all'),
+                '▲': document.getElementById('filter-dir-up'),
+                '▼': document.getElementById('filter-dir-down'),
+                '↔': document.getElementById('filter-dir-flat')
+            };
+
+            Object.entries(btns).forEach(([k, btn]) => {
+                if (!btn) return;
+                if (k === dir) {
+                    btn.className = "trend-dir-filter-btn px-2.5 py-1 rounded-lg text-xs font-medium bg-violet-600/40 text-white border border-violet-500/50 shadow-sm transition-all";
+                } else {
+                    btn.className = "trend-dir-filter-btn px-2.5 py-1 rounded-lg text-xs font-medium text-slate-400 hover:text-white bg-white/5 border border-white/5 transition-all";
+                }
+            });
+
+            filterTrends();
+        }
+
+        function filterTrends() {
+            const query = (document.getElementById('trend-search-input')?.value || '').toLowerCase().trim();
+            const cards = document.querySelectorAll('.trend-card-btn');
+            let firstVisible = null;
+
+            cards.forEach(card => {
+                const keyword = (card.getAttribute('data-keyword') || '').toLowerCase();
+                const summary = (card.getAttribute('data-summary') || '').toLowerCase();
+                const direction = card.getAttribute('data-direction') || '';
+
+                const matchesQuery = !query || keyword.includes(query) || summary.includes(query);
+                const matchesDir = currentTrendDirectionFilter === 'all' || direction === currentTrendDirectionFilter;
+
+                if (matchesQuery && matchesDir) {
+                    card.style.display = 'block';
+                    if (!firstVisible) firstVisible = card;
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+
+            // If active card is hidden, select first visible
+            const activeCard = document.querySelector('.trend-card-btn.border-violet-500\\/50');
+            if ((!activeCard || activeCard.style.display === 'none') && firstVisible) {
+                const id = firstVisible.getAttribute('data-id');
+                selectTrend(id);
+            }
+        }
+    </script>
+</body>
+</html>

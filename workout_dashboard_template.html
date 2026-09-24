@@ -1,0 +1,3344 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>종합 운동 & 피트니스 관리 대시보드</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- React & ReactDOM 18 -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <!-- D3.js v7 -->
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <!-- Babel Standalone for JSX -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+    }
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+  </style>
+</head>
+<body class="bg-slate-50/80 text-slate-800 font-sans antialiased">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useMemo, useRef, useEffect } = React;
+
+    // --- Lucide Icons (SVG Implementations) ---
+    const Activity = ({ className = "w-4 h-4", ...p }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...p}><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+    );
+    const TrendingUp = ({ className = "w-4 h-4", ...p }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...p}><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+    );
+    const TrendingDown = ({ className = "w-4 h-4", ...p }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...p}><polyline points="22 17 13.5 8.5 8.5 13.5 2 7"/><polyline points="16 17 22 17 22 11"/></svg>
+    );
+    const Scale = ({ className = "w-4 h-4", ...p }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...p}><path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="M7 21h10"/><path d="M12 3v18"/><path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2"/></svg>
+    );
+    const Flame = ({ className = "w-4 h-4", ...p }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...p}><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>
+    );
+    const Dumbbell = ({ className = "w-4 h-4", ...p }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...p}><path d="m6.5 6.5 11 11"/><path d="m21 21-1-1"/><path d="m3 3 1 1"/><path d="m18 22 4-4"/><path d="m2 6 4-4"/><path d="m3 10 7-7"/><path d="m14 21 7-7"/></svg>
+    );
+    const Calendar = ({ className = "w-4 h-4", ...p }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...p}><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>
+    );
+    const Plus = ({ className = "w-4 h-4", ...p }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...p}><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+    );
+    const Trash2 = ({ className = "w-4 h-4", ...p }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...p}><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
+    );
+    const Edit3 = ({ className = "w-4 h-4", ...p }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...p}><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+    );
+    const Check = ({ className = "w-4 h-4", ...p }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...p}><polyline points="20 6 9 17 4 12"/></svg>
+    );
+    const X = ({ className = "w-4 h-4", ...p }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...p}><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+    );
+    const ChevronRight = ({ className = "w-4 h-4", ...p }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...p}><path d="m9 18 6-6-6-6"/></svg>
+    );
+    const ChevronDown = ({ className = "w-4 h-4", ...p }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...p}><path d="m6 9 6 6 6-6"/></svg>
+    );
+    const ArrowUpRight = ({ className = "w-4 h-4", ...p }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...p}><path d="M7 7h10v10"/><path d="M7 17 17 7"/></svg>
+    );
+    const ArrowDownRight = ({ className = "w-4 h-4", ...p }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...p}><path d="m7 7 10 10"/><path d="M17 7v10H7"/></svg>
+    );
+    const Sparkles = ({ className = "w-4 h-4", ...p }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...p}><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/><path d="M5 3v4"/><path d="M19 17v4"/><path d="M3 5h4"/><path d="M17 19h4"/></svg>
+    );
+    const User = ({ className = "w-4 h-4", ...p }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...p}><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+    );
+    const Filter = ({ className = "w-4 h-4", ...p }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...p}><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+    );
+    const Search = ({ className = "w-4 h-4", ...p }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...p}><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+    );
+    const BarChart3 = ({ className = "w-4 h-4", ...p }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...p}><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
+    );
+    const List = ({ className = "w-4 h-4", ...p }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...p}><line x1="8" x2="21" y1="6" y2="6"/><line x1="8" x2="21" y1="12" y2="12"/><line x1="8" x2="21" y1="18" y2="18"/><line x1="3" x2="3.01" y1="6" y2="6"/><line x1="3" x2="3.01" y1="12" y2="12"/><line x1="3" x2="3.01" y1="18" y2="18"/></svg>
+    );
+    const Target = ({ className = "w-4 h-4", ...p }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...p}><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+    );
+    const Award = ({ className = "w-4 h-4", ...p }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...p}><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/></svg>
+    );
+    const HeartPulse = ({ className = "w-4 h-4", ...p }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...p}><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/><path d="M3.22 12H9.5l.5-1 2 4.5 2-7 1.5 3.5h5.27"/></svg>
+    );
+    const Clock = ({ className = "w-4 h-4", ...p }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...p}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+    );
+    const Zap = ({ className = "w-4 h-4", ...p }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...p}><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+    );
+    const SlidersHorizontal = ({ className = "w-4 h-4", ...p }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...p}><line x1="21" x2="14" y1="4" y2="4"/><line x1="10" x2="3" y1="4" y2="4"/><line x1="21" x2="12" y1="12" y2="12"/><line x1="8" x2="3" y1="12" y2="12"/><line x1="21" x2="16" y1="20" y2="20"/><line x1="12" x2="3" y1="20" y2="20"/><line x1="14" x2="14" y1="2" y2="6"/><line x1="8" x2="8" y1="10" y2="14"/><line x1="16" x2="16" y1="18" y2="22"/></svg>
+    );
+    const Droplet = ({ className = "w-4 h-4", ...p }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...p}><path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z"/></svg>
+    );
+    const AlertCircle = ({ className = "w-4 h-4", ...p }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...p}><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>
+    );
+    const Eye = ({ className = "w-4 h-4", ...p }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...p}><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+    );
+    const HelpCircle = ({ className = "w-4 h-4", ...p }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...p}><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" x2="12.01" y1="17" y2="17"/></svg>
+    );
+    const FileSpreadsheet = ({ className = "w-4 h-4", ...p }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...p}><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M8 13h2"/><path d="M14 13h2"/><path d="M8 17h2"/><path d="M14 17h2"/></svg>
+    );
+    const Info = ({ className = "w-4 h-4", ...p }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...p}><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+    );
+    const ShieldCheck = ({ className = "w-4 h-4", ...p }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...p}><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg>
+    );
+    const Bike = ({ className = "w-4 h-4", ...p }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...p}><circle cx="18.5" cy="17.5" r="3.5"/><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="15" cy="5" r="1"/><path d="M12 17.5V14l-3-3 4-3 2 3h2"/></svg>
+    );
+    const Footprints = ({ className = "w-4 h-4", ...p }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...p}><path d="M4 16v-2.38C4 11.5 2.97 10.5 3 8c.03-2.72 1.49-6 4.5-6C9.37 2 10 3.8 10 5.5c0 3.11-2 5.5-2 8.5v2"/><path d="M20 20v-2.38c0-2.12 1.03-3.12 1-5.62-.03-2.72-1.49-6-4.5-6C14.63 6 14 7.8 14 9.5c0 3.11 2 5.5 2 8.5v2"/></svg>
+    );
+    const Waves = ({ className = "w-4 h-4", ...p }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...p}><path d="M2 6c.6.5 1.2 1 2.5 1C7 7 7 5 9.5 5c2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/><path d="M2 12c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/><path d="M2 18c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/></svg>
+    );
+    const Compass = ({ className = "w-4 h-4", ...p }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...p}><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg>
+    );
+    const Trophy = ({ className = "w-4 h-4", ...p }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...p}><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.45 1-1 1H8c-.55 0-1 .45-1 1v1c0 .55.45 1 1 1h8c.55 0 1-.45 1-1v-1c0-.55-.45-1-1-1h-1c-.55 0-1-.45-1-1v-2.34"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>
+    );
+    const Timer = ({ className = "w-4 h-4", ...p }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...p}><line x1="10" x2="14" y1="2" y2="2"/><line x1="12" x2="15" y1="14" y2="11"/><circle cx="12" cy="14" r="8"/></svg>
+    );
+    const Gauge = ({ className = "w-4 h-4", ...p }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...p}><path d="m12 14 4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/></svg>
+    );
+    const Flag = ({ className = "w-4 h-4", ...p }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...p}><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" x2="4" y1="22" y2="15"/></svg>
+    );
+    const CheckCircle2 = ({ className = "w-4 h-4", ...p }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...p}><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
+    );
+    const RefreshCw = ({ className = "w-4 h-4", ...p }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...p}><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>
+    );
+    const RotateCcw = ({ className = "w-4 h-4", ...p }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...p}><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+    );
+
+    // --- HELPER UTILITIES ---
+    const fixMojibake = (val) => {
+      if (val === null || val === undefined) return '';
+      const str = String(val).trim();
+      if (!str || str === '-') return str;
+
+      if (/[\u0080-\u009FÃÂìëêíïîðñòóôõö÷øùúûüýþÿ]/.test(str)) {
+        try {
+          const bytes = new Uint8Array([...str].map(c => c.charCodeAt(0) & 0xFF));
+          const decoded = new TextDecoder('utf-8', { fatal: false }).decode(bytes);
+          if (/[\uAC00-\uD7A3]/.test(decoded)) {
+            return decoded.replace(/\0/g, '').trim();
+          }
+          if (decoded && !decoded.includes('\uFFFD')) {
+            return decoded.replace(/\0/g, '').trim();
+          }
+        } catch (e) {}
+        return str.replace(/[\u0080-\u009F]/g, '').trim();
+      }
+      return str;
+    };
+
+    const parseNum = (val) => {
+      if (val === null || val === undefined || val === '-' || val === '') return null;
+      if (typeof val === 'number') return isNaN(val) ? null : val;
+      const cleaned = fixMojibake(String(val))
+        .replace(/%/g, '')
+        .replace(/,/g, '')
+        .replace(/kcal/gi, '')
+        .replace(/bpm/gi, '')
+        .replace(/스트로크/gi, '')
+        .trim();
+      const parsed = parseFloat(cleaned);
+      return isNaN(parsed) ? null : parsed;
+    };
+
+    const normalizeDateStr = (val) => {
+      if (val === null || val === undefined || val === '') return '';
+      if (typeof val === 'number' || (!isNaN(val) && Number(val) > 30000 && Number(val) < 80000)) {
+        const serial = Number(val);
+        const utcDays = Math.floor(serial - 25569);
+        const d = new Date(utcDays * 86400 * 1000);
+        const yyyy = d.getUTCFullYear();
+        const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
+        const dd = String(d.getUTCDate()).padStart(2, '0');
+        return `${yyyy}-${mm}-${dd}`;
+      }
+      const s = fixMojibake(String(val)).trim();
+      const clean = s.split('T')[0].trim();
+      const match = clean.match(/^(\d{4})[-./\s년]+(\d{1,2})[-./\s월]+(\d{1,2})/);
+      if (match) {
+        const y = match[1];
+        const m = match[2].padStart(2, '0');
+        const d = match[3].padStart(2, '0');
+        return `${y}-${m}-${d}`;
+      }
+      return clean;
+    };
+
+    const normalizeTimeStr = (val) => {
+      if (val === null || val === undefined || val === '') return '';
+      if (typeof val === 'number' && val >= 0 && val <= 1) {
+        const totalSec = Math.round(val * 86400);
+        const hh = String(Math.floor(totalSec / 3600)).padStart(2, '0');
+        const mm = String(Math.floor((totalSec % 3600) / 60)).padStart(2, '0');
+        const ss = String(totalSec % 60).padStart(2, '0');
+        return `${hh}:${mm}:${ss}`;
+      }
+      return String(val).trim();
+    };
+
+    const parseDurationMin = (val) => {
+      if (val === null || val === undefined || val === '-' || val === '') return 0;
+      if (typeof val === 'number') return isNaN(val) ? 0 : val;
+      const str = fixMojibake(String(val)).trim();
+      if (!str) return 0;
+
+      let totalMinutes = 0;
+      let hasUnit = false;
+
+      const hourMatch = str.match(/(\d+(?:\.\d+)?)\s*(?:시간|h|hr|hours?)/i);
+      if (hourMatch) {
+        totalMinutes += parseFloat(hourMatch[1]) * 60;
+        hasUnit = true;
+      }
+
+      const minMatch = str.match(/(\d+(?:\.\d+)?)\s*(?:분|m|min|mins?)/i);
+      if (minMatch) {
+        totalMinutes += parseFloat(minMatch[1]);
+        hasUnit = true;
+      }
+
+      const secMatch = str.match(/(\d+(?:\.\d+)?)\s*(?:초|s|sec|seconds?)/i);
+      if (secMatch) {
+        totalMinutes += parseFloat(secMatch[1]) / 60;
+        hasUnit = true;
+      }
+
+      if (hasUnit) {
+        return Math.round(totalMinutes * 10) / 10;
+      }
+
+      const num = parseFloat(str.replace(/,/g, ''));
+      return isNaN(num) ? 0 : num;
+    };
+
+    const parseDateSafe = (dateStr, timeStr) => {
+      const normDate = normalizeDateStr(dateStr);
+      if (!normDate) return new Date(0);
+      const dateParts = normDate.split('-').map(Number);
+      const year = dateParts[0] || 2026;
+      const month = (dateParts[1] || 1) - 1;
+      const day = dateParts[2] || 1;
+
+      let hour = 0, min = 0, sec = 0;
+      if (timeStr) {
+        const normTime = normalizeTimeStr(timeStr);
+        const timeParts = String(normTime).trim().split(':').map(Number);
+        hour = timeParts[0] || 0;
+        min = timeParts[1] || 0;
+        sec = timeParts[2] || 0;
+      }
+      return new Date(year, month, day, hour, min, sec);
+    };
+
+    const parseDistanceKm = (str) => {
+      if (str === null || str === undefined || str === '-') return null;
+      const s = fixMojibake(String(str)).trim();
+      if (!s || s === '-') return null;
+
+      if (/(스트로크|세트|세션|회|수심|타|개)/.test(s)) return null;
+
+      const kmMatch = s.match(/(\d+(?:\.\d+)?)\s*km/i);
+      if (kmMatch) {
+        const num = parseFloat(kmMatch[1]);
+        return isNaN(num) ? null : num;
+      }
+
+      const mMatch = s.match(/(\d+(?:\.\d+)?)\s*m(?![a-z])/i);
+      if (mMatch) {
+        const num = parseFloat(mMatch[1]);
+        return isNaN(num) ? null : num / 1000;
+      }
+
+      return null;
+    };
+
+    const extractDistanceMeters = (distStr) => {
+      if (!distStr || distStr === '-') return 0;
+      const s = fixMojibake(String(distStr)).trim();
+      if (/(스트로크|세트|세션|회|수심|타|개)/.test(s)) return 0;
+      const kmMatch = s.match(/(\d+(?:\.\d+)?)\s*km/i);
+      if (kmMatch) return parseFloat(kmMatch[1]) * 1000;
+      const mMatch = s.match(/(\d+(?:\.\d+)?)\s*m(?![a-z])/i);
+      if (mMatch) return parseFloat(mMatch[1]);
+      return 0;
+    };
+
+    const parseSpeedKmH = (str) => {
+      if (str === null || str === undefined || str === '-') return null;
+      const s = fixMojibake(String(str)).trim();
+      if (!s || s === '-') return null;
+      if (s.includes('km/h')) {
+        const kmhMatch = s.match(/(\d+(?:\.\d+)?)\s*km\/h/i);
+        if (kmhMatch) return parseFloat(kmhMatch[1]);
+        const num = parseFloat(s.replace(/km\/h/gi, '').trim());
+        return isNaN(num) ? null : num;
+      }
+      const paceMatch = s.match(/(\d+)'(\d+)"/);
+      if (paceMatch) {
+        const paceSec = parseInt(paceMatch[1], 10) * 60 + parseInt(paceMatch[2], 10);
+        if (paceSec > 0) return Math.round((3600 / paceSec) * 100) / 100;
+      }
+      return null;
+    };
+
+    const parsePaceToSec = (str) => {
+      if (!str || str === '-') return null;
+      const s = String(str).trim();
+      const match = s.match(/(\d+)'(\d+)"/);
+      if (match) {
+        const min = parseInt(match[1], 10);
+        const sec = parseInt(match[2], 10);
+        return min * 60 + sec;
+      }
+      return null;
+    };
+
+    const formatPaceFromSec = (totalSec) => {
+      if (!totalSec || isNaN(totalSec)) return '-';
+      const m = Math.floor(totalSec / 60);
+      const s = Math.round(totalSec % 60);
+      return `${m}'${String(s).padStart(2, '0')}"`;
+    };
+
+    const getActivityMeta = (activity) => {
+      const name = String(activity || '').trim();
+      if (name.includes('사이클') || name.includes('자전거')) {
+        return { name, category: '사이클', color: '#10b981', bg: 'bg-emerald-50 text-emerald-700 border-emerald-200', icon: '🚴' };
+      }
+      if (name.includes('달리기') || name.includes('러닝')) {
+        return { name, category: '러닝', color: '#f97316', bg: 'bg-orange-50 text-orange-700 border-orange-200', icon: '🏃' };
+      }
+      if (name.includes('걷기')) {
+        return { name, category: '걷기', color: '#0ea5e9', bg: 'bg-sky-50 text-sky-700 border-sky-200', icon: '🚶' };
+      }
+      if (name.includes('수영')) {
+        return { name, category: '수영', color: '#06b6d4', bg: 'bg-cyan-50 text-cyan-700 border-cyan-200', icon: '🏊' };
+      }
+      if (name.includes('골프')) {
+        return { name, category: '골프', color: '#8b5cf6', bg: 'bg-purple-50 text-purple-700 border-purple-200', icon: '⛳' };
+      }
+      if (name.includes('근력') || name.includes('웨이트')) {
+        return { name, category: '근력', color: '#3b82f6', bg: 'bg-blue-50 text-blue-700 border-blue-200', icon: '🏋️' };
+      }
+      if (name.includes('다이빙')) {
+        return { name, category: '다이빙', color: '#6366f1', bg: 'bg-indigo-50 text-indigo-700 border-indigo-200', icon: '🤿' };
+      }
+      if (name.includes('탁구')) {
+        return { name, category: '구기', color: '#ec4899', bg: 'bg-pink-50 text-pink-700 border-pink-200', icon: '🏓' };
+      }
+      if (name.includes('계단')) {
+        return { name, category: '유산소', color: '#eab308', bg: 'bg-yellow-50 text-yellow-700 border-yellow-200', icon: '🪜' };
+      }
+      if (name.includes('등산') || name.includes('트레킹') || name.includes('하이킹')) {
+        return { name, category: '등산', color: '#15803d', bg: 'bg-emerald-50 text-emerald-800 border-emerald-300', icon: '⛰️' };
+      }
+      return { name, category: '기타', color: '#64748b', bg: 'bg-slate-50 text-slate-700 border-slate-200', icon: '⚡' };
+    };
+
+    const formatDateShort = (val) => {
+      if (!val) return '-';
+      const s = String(val).trim();
+      const datePart = s.includes('T') ? s.split('T')[0] : s;
+      const segments = datePart.split('-');
+      if (segments.length === 3) {
+        return `${parseInt(segments[1], 10)}/${parseInt(segments[2], 10)}`;
+      }
+      return datePart;
+    };
+
+    // --- D3 DAILY WORKOUT VOLUME & CALORIE CHART ---
+    function D3DailyVolumeChart({ workouts, height = 260 }) {
+      const containerRef = useRef(null);
+      const [containerWidth, setContainerWidth] = useState(600);
+      const [hoveredDay, setHoveredDay] = useState(null);
+
+      useEffect(() => {
+        if (!containerRef.current) return;
+        const resizeObserver = new ResizeObserver((entries) => {
+          for (let entry of entries) {
+            setContainerWidth(entry.contentRect.width);
+          }
+        });
+        resizeObserver.observe(containerRef.current);
+        return () => resizeObserver.disconnect();
+      }, []);
+
+      const dailyData = useMemo(() => {
+        const map = {};
+        workouts.forEach(w => {
+          if (!w.date) return;
+          if (!map[w.date]) {
+            map[w.date] = {
+              date: w.date,
+              dateLabel: formatDateShort(w.date),
+              duration: 0,
+              calories: 0,
+              sessions: 0,
+              activities: []
+            };
+          }
+          map[w.date].duration += w.duration || 0;
+          if (w.calories) map[w.date].calories += w.calories;
+          map[w.date].sessions += 1;
+          map[w.date].activities.push(w.activity);
+        });
+
+        const list = Object.values(map);
+        list.sort((a, b) => parseDateSafe(a.date).getTime() - parseDateSafe(b.date).getTime());
+        if (list.length > 0) {
+          list[list.length - 1].isLatest = true;
+        }
+        return list;
+      }, [workouts]);
+
+      const margin = { top: 30, right: 24, bottom: 35, left: 45 };
+      const innerWidth = Math.max(containerWidth - margin.left - margin.right, 100);
+      const innerHeight = Math.max(height - margin.top - margin.bottom, 80);
+
+      const xScale = useMemo(() => {
+        return d3.scaleBand()
+          .domain(dailyData.map(d => d.date))
+          .range([0, innerWidth])
+          .padding(0.3);
+      }, [dailyData, innerWidth]);
+
+      const maxDuration = d3.max(dailyData, d => d.duration) || 60;
+      const yScale = useMemo(() => {
+        return d3.scaleLinear()
+          .domain([0, maxDuration * 1.25])
+          .range([innerHeight, 0])
+          .nice();
+      }, [maxDuration, innerHeight]);
+
+      return (
+        <div ref={containerRef} className="w-full relative select-none">
+          {dailyData.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-48 text-slate-400 bg-slate-50/50 rounded-xl border border-dashed border-slate-200">
+              <Activity className="w-8 h-8 mb-2 opacity-50 text-slate-400" />
+              <p className="text-sm font-medium">표시할 일자별 운동 데이터가 없습니다.</p>
+            </div>
+          ) : (
+            <div className="relative">
+              <svg width={containerWidth} height={height} className="overflow-visible">
+                <g transform={`translate(${margin.left}, ${margin.top})`}>
+                  {yScale.ticks(4).map((tick, i) => (
+                    <g key={`d-grid-${i}`} transform={`translate(0, ${yScale(tick)})`}>
+                      <line x1={0} x2={innerWidth} stroke="#f1f5f9" strokeDasharray="3 3" />
+                      <text x={-8} y={4} textAnchor="end" className="text-xs fill-slate-500 font-mono font-bold">
+                        {tick}분
+                      </text>
+                    </g>
+                  ))}
+
+                  {dailyData.map((d, i) => {
+                    const x = xScale(d.date);
+                    const barWidth = xScale.bandwidth();
+                    const y = yScale(d.duration);
+                    const barHeight = Math.max(0, innerHeight - y);
+                    const isHovered = hoveredDay && hoveredDay.date === d.date;
+
+                    return (
+                      <g
+                        key={d.date}
+                        className="cursor-pointer"
+                        onMouseEnter={() => setHoveredDay(d)}
+                        onMouseLeave={() => setHoveredDay(null)}
+                      >
+                        {isHovered && (
+                          <rect
+                            x={x - 4}
+                            y={0}
+                            width={barWidth + 8}
+                            height={innerHeight}
+                            fill="#f8fafc"
+                            rx={6}
+                          />
+                        )}
+
+                        <rect
+                          x={x}
+                          y={y}
+                          width={barWidth}
+                          height={barHeight}
+                          fill={d.isLatest ? '#059669' : isHovered ? '#047857' : '#10b981'}
+                          stroke={d.isLatest ? '#047857' : 'none'}
+                          strokeWidth={d.isLatest ? 1.5 : 0}
+                          rx={4}
+                          className="transition-colors duration-150"
+                        />
+
+                        {d.isLatest && (
+                          <text
+                            x={x + barWidth / 2}
+                            y={Math.max(y - 18, -12)}
+                            textAnchor="middle"
+                            className="text-[10px] fill-emerald-800 font-black tracking-tight"
+                          >
+                            최신
+                          </text>
+                        )}
+
+                        <text
+                          x={x + barWidth / 2}
+                          y={y - 6}
+                          textAnchor="middle"
+                          className={`text-xs font-mono font-bold ${
+                            d.isLatest ? 'fill-emerald-950 font-black' : isHovered ? 'fill-slate-900 font-black' : 'fill-slate-600'
+                          }`}
+                        >
+                          {d.duration.toFixed(0)}m
+                        </text>
+
+                        {(dailyData.length <= 16 || i % 2 === 0 || d.isLatest || i === dailyData.length - 1) && (
+                          <text
+                            x={x + barWidth / 2}
+                            y={innerHeight + 18}
+                            textAnchor="middle"
+                            className={`text-xs transition-colors font-bold ${
+                              d.isLatest ? 'fill-emerald-950 font-black underline' : isHovered ? 'fill-slate-950 font-black' : 'fill-slate-600'
+                            }`}
+                          >
+                            {d.dateLabel}
+                          </text>
+                        )}
+                      </g>
+                    );
+                  })}
+                </g>
+              </svg>
+
+              {hoveredDay && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    left: Math.min(Math.max((xScale(hoveredDay.date) || 0) + margin.left - 70, 8), containerWidth - 180),
+                    top: Math.max((yScale(hoveredDay.duration) || 0) + margin.top - 95, 4)
+                  }}
+                  className="pointer-events-none bg-slate-900/95 backdrop-blur text-white text-sm p-3 rounded-xl shadow-xl border border-slate-700/60 z-20 min-w-[175px]"
+                >
+                  <div className="font-bold text-slate-100 border-b border-slate-700/80 pb-1.5 mb-2 flex justify-between items-center">
+                    <span className="text-sm font-extrabold">{hoveredDay.date}</span>
+                    <span className="text-xs text-emerald-300 font-black px-1.5 py-0.5 rounded bg-emerald-900/50">{hoveredDay.sessions}개 세션</span>
+                  </div>
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between text-slate-200">
+                      <span className="font-semibold">총 운동 시간:</span>
+                      <span className="font-extrabold text-emerald-400 font-mono text-sm">{hoveredDay.duration.toFixed(1)} 분</span>
+                    </div>
+                    {hoveredDay.calories > 0 && (
+                      <div className="flex justify-between text-slate-200">
+                        <span className="font-semibold">소모 칼로리:</span>
+                        <span className="font-extrabold text-amber-300 font-mono text-sm">{hoveredDay.calories.toLocaleString()} kcal</span>
+                      </div>
+                    )}
+                    <div className="text-xs text-slate-300 font-medium truncate pt-1.5 border-t border-slate-800">
+                      🏃 {Array.from(new Set(hoveredDay.activities)).join(', ')}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // --- D3 WORKOUT CUMULATIVE DURATION & COUNT BAR CHART ---
+    function D3WorkoutBarChart({ activityStats, selectedActivity, onSelectActivity, height = 260 }) {
+      const containerRef = useRef(null);
+      const [containerWidth, setContainerWidth] = useState(600);
+      const [hoveredBar, setHoveredBar] = useState(null);
+
+      useEffect(() => {
+        if (!containerRef.current) return;
+        const observer = new ResizeObserver((entries) => {
+          for (let entry of entries) {
+            setContainerWidth(entry.contentRect.width);
+          }
+        });
+        observer.observe(containerRef.current);
+        return () => observer.disconnect();
+      }, []);
+
+      const chartData = useMemo(() => {
+        return activityStats.slice(0, 8);
+      }, [activityStats]);
+
+      const margin = { top: 20, right: 24, bottom: 45, left: 90 };
+      const innerWidth = Math.max(containerWidth - margin.left - margin.right, 100);
+      const innerHeight = Math.max(height - margin.top - margin.bottom, 80);
+
+      const yScale = useMemo(() => {
+        return d3.scaleBand()
+          .domain(chartData.map(d => d.activity))
+          .range([0, innerHeight])
+          .padding(0.24);
+      }, [chartData, innerHeight]);
+
+      const maxDuration = d3.max(chartData, d => d.totalDuration) || 100;
+      const xScale = useMemo(() => {
+        return d3.scaleLinear()
+          .domain([0, maxDuration * 1.15])
+          .range([0, innerWidth])
+          .nice();
+      }, [maxDuration, innerWidth]);
+
+      return (
+        <div ref={containerRef} className="w-full relative select-none">
+          {chartData.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-48 text-slate-400 bg-slate-50/50 rounded-xl border border-dashed border-slate-200">
+              <Dumbbell className="w-8 h-8 mb-2 opacity-40 text-slate-400" />
+              <p className="text-xs font-medium">운동 데이터가 없습니다.</p>
+            </div>
+          ) : (
+            <div className="relative">
+              <svg width={containerWidth} height={height} className="overflow-visible">
+                <g transform={`translate(${margin.left}, ${margin.top})`}>
+                  {xScale.ticks(5).map((tick, i) => (
+                    <g key={`x-tick-${i}`} transform={`translate(${xScale(tick)}, 0)`}>
+                      <line y1={0} y2={innerHeight} stroke="#f1f5f9" strokeDasharray="3 3" />
+                      <text y={innerHeight + 20} textAnchor="middle" className="text-xs fill-slate-500 font-mono font-bold">
+                        {tick}분
+                      </text>
+                    </g>
+                  ))}
+
+                  {chartData.map((d) => {
+                    const y = yScale(d.activity);
+                    const barWidth = xScale(d.totalDuration);
+                    const isSelected = selectedActivity === d.activity;
+                    const isHovered = hoveredBar === d.activity;
+                    const meta = getActivityMeta(d.activity);
+
+                    return (
+                      <g
+                        key={d.activity}
+                        className="cursor-pointer transition-all duration-150"
+                        onClick={() => onSelectActivity(isSelected ? '전체' : d.activity)}
+                        onMouseEnter={() => setHoveredBar(d.activity)}
+                        onMouseLeave={() => setHoveredBar(null)}
+                      >
+                        <text
+                          x={-10}
+                          y={y + yScale.bandwidth() / 2 + 5}
+                          textAnchor="end"
+                          className={`text-sm transition-colors ${
+                            isSelected || isHovered ? 'font-black fill-slate-950 text-sm' : 'font-bold fill-slate-700'
+                          }`}
+                        >
+                          {meta.icon} {d.activity}
+                        </text>
+
+                        <rect
+                          x={0}
+                          y={y}
+                          width={innerWidth}
+                          height={yScale.bandwidth()}
+                          fill="#f8fafc"
+                          rx={5}
+                        />
+
+                        <rect
+                          x={0}
+                          y={y}
+                          width={barWidth}
+                          height={yScale.bandwidth()}
+                          fill={meta.color}
+                          opacity={isSelected || !selectedActivity || selectedActivity === '전체' ? 1 : 0.4}
+                          rx={5}
+                          className="transition-all duration-200"
+                        />
+
+                        <text
+                          x={barWidth + 8}
+                          y={y + yScale.bandwidth() / 2 + 5}
+                          className="text-xs sm:text-sm font-mono font-extrabold fill-slate-800"
+                        >
+                          {d.totalDuration.toFixed(1)}분 <span className="text-xs font-bold fill-slate-500 font-sans">({d.count}회)</span>
+                        </text>
+                      </g>
+                    );
+                  })}
+                </g>
+              </svg>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // --- D3 ACTIVITY PROGRESS & IMPROVEMENT OVER TIME CHART ---
+    function D3ActivityProgressChart({ records, activityName, height = 240 }) {
+      const containerRef = useRef(null);
+      const [containerWidth, setContainerWidth] = useState(600);
+      const [hoveredPoint, setHoveredPoint] = useState(null);
+
+      useEffect(() => {
+        if (!containerRef.current) return;
+        const observer = new ResizeObserver((entries) => {
+          for (let entry of entries) {
+            setContainerWidth(entry.contentRect.width);
+          }
+        });
+        observer.observe(containerRef.current);
+        return () => observer.disconnect();
+      }, []);
+
+      const filtered = useMemo(() => {
+        const list = records.filter(r => {
+          if (activityName === '전체') return true;
+          return r.activity === activityName;
+        });
+        return [...list].sort((a, b) => {
+          const tA = parseDateSafe(a.date, a.time).getTime();
+          const tB = parseDateSafe(b.date, b.time).getTime();
+          return tA - tB;
+        });
+      }, [records, activityName]);
+
+      const margin = { top: 20, right: 35, bottom: 40, left: 45 };
+      const innerWidth = Math.max(containerWidth - margin.left - margin.right, 100);
+      const innerHeight = Math.max(height - margin.top - margin.bottom, 80);
+
+      const metricType = useMemo(() => {
+        const hasSpeed = filtered.some(r => r.speedNum !== null && !isNaN(r.speedNum));
+        const hasDistance = filtered.some(r => r.distanceKm !== null && !isNaN(r.distanceKm));
+        const hasCalories = filtered.some(r => r.calories !== null && !isNaN(r.calories));
+
+        if (hasSpeed) return { key: 'speed', label: '속도 (km/h)', unit: 'km/h', color: '#10b981' };
+        if (hasDistance) return { key: 'distance', label: '거리 (km)', unit: 'km', color: '#f97316' };
+        if (hasCalories && !activityName.includes('사이클') && !activityName.includes('달리기')) {
+          return { key: 'calories', label: '칼로리 (kcal)', unit: 'kcal', color: '#8b5cf6' };
+        }
+        return { key: 'duration', label: '운동 시간 (분)', unit: '분', color: '#3b82f6' };
+      }, [filtered, activityName]);
+
+      const chartData = useMemo(() => {
+        const validItems = [];
+        filtered.forEach((r) => {
+          let val = null;
+          if (metricType.key === 'speed') {
+            if (r.speedNum !== null && !isNaN(r.speedNum)) val = r.speedNum;
+          } else if (metricType.key === 'distance') {
+            if (r.distanceKm !== null && !isNaN(r.distanceKm)) val = r.distanceKm;
+          } else if (metricType.key === 'calories') {
+            if (r.calories !== null && !isNaN(r.calories)) val = r.calories;
+          } else {
+            if (r.duration !== null && !isNaN(r.duration)) val = r.duration;
+          }
+
+          if (val !== null) {
+            validItems.push({
+              id: r.index_,
+              date: r.date,
+              time: r.time,
+              dateLabel: formatDateShort(r.date),
+              activity: r.activity,
+              duration: r.duration,
+              calories: r.calories,
+              distanceStr: r.distanceOrSet,
+              speedStr: r.speedOrPace,
+              hr: r.heartRate,
+              val,
+              index: validItems.length
+            });
+          }
+        });
+        return validItems;
+      }, [filtered, metricType]);
+
+      const xScale = useMemo(() => {
+        if (chartData.length <= 1) return () => innerWidth / 2;
+        return d3.scalePoint()
+          .domain(chartData.map((_, i) => i))
+          .range([0, innerWidth])
+          .padding(0.2);
+      }, [chartData, innerWidth]);
+
+      const yScale = useMemo(() => {
+        const vals = chartData.map(d => d.val).filter(v => v !== null && !isNaN(v));
+        if (vals.length === 0) return d3.scaleLinear().domain([0, 10]).range([innerHeight, 0]);
+        const min = d3.min(vals) || 0;
+        const max = d3.max(vals) || 10;
+        const padding = (max - min) * 0.25 || (max * 0.2) || 2;
+        return d3.scaleLinear()
+          .domain([Math.max(0, min - padding), max + padding])
+          .range([innerHeight, 0])
+          .nice();
+      }, [chartData, innerHeight]);
+
+      const lineGen = useMemo(() => {
+        return d3.line()
+          .x((d, i) => xScale(i))
+          .y(d => yScale(d.val))
+          .curve(d3.curveMonotoneX);
+      }, [xScale, yScale]);
+
+      const areaGen = useMemo(() => {
+        return d3.area()
+          .x((d, i) => xScale(i))
+          .y0(innerHeight)
+          .y1(d => yScale(d.val))
+          .curve(d3.curveMonotoneX);
+      }, [xScale, yScale, innerHeight]);
+
+      return (
+        <div ref={containerRef} className="w-full relative select-none">
+          {chartData.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-48 text-slate-400 bg-slate-50/50 rounded-xl border border-dashed border-slate-200">
+              <Activity className="w-8 h-8 mb-2 opacity-40 text-slate-400" />
+              <p className="text-xs font-medium">선택된 종목의 추이 데이터가 없습니다.</p>
+            </div>
+          ) : (
+            <div className="relative">
+              <svg width={containerWidth} height={height} className="overflow-visible">
+                <defs>
+                  <linearGradient id="workoutGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor={metricType.color} stopOpacity="0.25" />
+                    <stop offset="100%" stopColor={metricType.color} stopOpacity="0.01" />
+                  </linearGradient>
+                </defs>
+
+                <g transform={`translate(${margin.left}, ${margin.top})`}>
+                  {yScale.ticks(4).map((tick, i) => (
+                    <g key={`prog-grid-${i}`} transform={`translate(0, ${yScale(tick)})`}>
+                      <line x1={0} x2={innerWidth} stroke="#f1f5f9" strokeDasharray="3 3" />
+                      <text x={-8} y={4} textAnchor="end" className="text-xs fill-slate-500 font-mono font-bold">
+                        {tick.toLocaleString()}
+                      </text>
+                    </g>
+                  ))}
+
+                  {chartData.length > 1 && (
+                    <>
+                      <path d={areaGen(chartData)} fill="url(#workoutGrad)" />
+                      <path
+                        d={lineGen(chartData)}
+                        fill="none"
+                        stroke={metricType.color}
+                        strokeWidth="2.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </>
+                  )}
+
+                  {chartData.map((d, i) => {
+                    const cx = chartData.length === 1 ? innerWidth / 2 : xScale(i);
+                    const cy = yScale(d.val);
+                    const isHovered = hoveredPoint && hoveredPoint.index === i;
+
+                    return (
+                      <g key={`pt-${i}`}>
+                        {isHovered && (
+                          <line x1={cx} y1={0} x2={cx} y2={innerHeight} stroke="#cbd5e1" strokeDasharray="2 2" />
+                        )}
+                        <circle
+                          cx={cx}
+                          cy={cy}
+                          r={isHovered ? 6 : 4}
+                          fill="#ffffff"
+                          stroke={metricType.color}
+                          strokeWidth={isHovered ? 3 : 2}
+                          className="cursor-pointer transition-all duration-150"
+                        />
+                        <rect
+                          x={cx - (innerWidth / Math.max(chartData.length, 1)) / 2}
+                          y={0}
+                          width={innerWidth / Math.max(chartData.length, 1)}
+                          height={innerHeight + margin.bottom}
+                          fill="transparent"
+                          className="cursor-pointer"
+                          onMouseEnter={() => setHoveredPoint({ ...d, cx, cy })}
+                          onMouseLeave={() => setHoveredPoint(null)}
+                        />
+                        <text
+                          x={cx}
+                          y={innerHeight + 18}
+                          textAnchor="middle"
+                          className={`text-xs transition-colors font-bold ${
+                            isHovered ? 'fill-slate-950 font-black' : 'fill-slate-600'
+                          }`}
+                        >
+                          {d.dateLabel}
+                        </text>
+                      </g>
+                    );
+                  })}
+                </g>
+              </svg>
+
+              {hoveredPoint && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    left: Math.min(Math.max(hoveredPoint.cx + margin.left - 80, 8), containerWidth - 180),
+                    top: Math.max(hoveredPoint.cy + margin.top - 80, 0)
+                  }}
+                  className="pointer-events-none bg-slate-900/90 backdrop-blur text-white text-sm p-3 rounded-xl shadow-xl border border-slate-700/60 z-20 min-w-[170px]"
+                >
+                  <div className="font-bold text-slate-100 border-b border-slate-700 pb-1.5 mb-1.5 flex justify-between">
+                    <span>{hoveredPoint.date} {hoveredPoint.time ? hoveredPoint.time.slice(0, 5) : ''}</span>
+                    <span className="text-xs text-slate-400 font-mono font-bold">#{hoveredPoint.index + 1}</span>
+                  </div>
+                  <div className="space-y-1">
+                    <div className="text-emerald-400 font-extrabold flex justify-between text-sm">
+                      <span>{hoveredPoint.activity}</span>
+                      <span>{hoveredPoint.duration}분</span>
+                    </div>
+                    {hoveredPoint.speedStr && hoveredPoint.speedStr !== '-' && (
+                      <div className="text-sky-300 text-xs font-semibold">속도/페이스: {hoveredPoint.speedStr}</div>
+                    )}
+                    {hoveredPoint.distanceStr && hoveredPoint.distanceStr !== '-' && (
+                      <div className="text-amber-300 text-xs font-semibold">거리/세트: {hoveredPoint.distanceStr}</div>
+                    )}
+                    {hoveredPoint.calories && (
+                      <div className="text-rose-300 text-xs font-semibold">칼로리: {hoveredPoint.calories} kcal</div>
+                    )}
+                    {hoveredPoint.hr && (
+                      <div className="text-slate-300 text-xs font-semibold">심박수: {hoveredPoint.hr} bpm</div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // --- D3 HEART RATE DISTRIBUTION HELPER ---
+    function D3HeartRateDistribution({ records, height = 240 }) {
+      const containerRef = useRef(null);
+      const [containerWidth, setContainerWidth] = useState(600);
+      const [hoveredHr, setHoveredHr] = useState(null);
+
+      useEffect(() => {
+        if (!containerRef.current) return;
+        const observer = new ResizeObserver((entries) => {
+          for (let entry of entries) {
+            setContainerWidth(entry.contentRect.width);
+          }
+        });
+        observer.observe(containerRef.current);
+        return () => observer.disconnect();
+      }, []);
+
+      const hrRecords = useMemo(() => {
+        return records.filter(r => r.heartRate !== null && !isNaN(r.heartRate));
+      }, [records]);
+
+      const margin = { top: 20, right: 30, bottom: 35, left: 45 };
+      const innerWidth = Math.max(containerWidth - margin.left - margin.right, 100);
+      const innerHeight = Math.max(height - margin.top - margin.bottom, 80);
+
+      const xScale = useMemo(() => {
+        return d3.scalePoint()
+          .domain(hrRecords.map((_, i) => i))
+          .range([0, innerWidth])
+          .padding(0.2);
+      }, [hrRecords, innerWidth]);
+
+      const yScale = useMemo(() => {
+        const vals = hrRecords.map(d => d.heartRate);
+        if (vals.length === 0) return d3.scaleLinear().domain([80, 160]).range([innerHeight, 0]);
+        const min = Math.max(d3.min(vals) - 10, 60);
+        const max = d3.max(vals) + 15;
+        return d3.scaleLinear().domain([min, max]).range([innerHeight, 0]).nice();
+      }, [hrRecords, innerHeight]);
+
+      return (
+        <div ref={containerRef} className="w-full relative select-none">
+          {hrRecords.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-48 text-slate-400 bg-slate-50/50 rounded-xl border border-dashed border-slate-200">
+              <HeartPulse className="w-8 h-8 mb-2 opacity-40 text-slate-400" />
+              <p className="text-xs font-medium">심박수 기록 데이터가 없습니다.</p>
+            </div>
+          ) : (
+            <svg width={containerWidth} height={height} className="overflow-visible">
+              <g transform={`translate(${margin.left}, ${margin.top})`}>
+                <rect x={0} y={yScale(140)} width={innerWidth} height={Math.max(0, yScale(100) - yScale(140))} fill="#fef2f2" opacity={0.6} />
+                <text x={innerWidth - 4} y={yScale(135)} textAnchor="end" className="text-xs fill-rose-600 font-bold">유산소/지방연소 구간 (100~140 bpm)</text>
+
+                {yScale.ticks(4).map((tick, i) => (
+                  <g key={`hr-grid-${i}`} transform={`translate(0, ${yScale(tick)})`}>
+                    <line x1={0} x2={innerWidth} stroke="#f1f5f9" strokeDasharray="3 3" />
+                    <text x={-8} y={4} textAnchor="end" className="text-xs fill-slate-500 font-mono font-bold">
+                      {tick}
+                    </text>
+                  </g>
+                ))}
+
+                {hrRecords.length > 1 && (
+                  <path
+                    d={d3.line().x((_, i) => xScale(i)).y(d => yScale(d.heartRate)).curve(d3.curveMonotoneX)(hrRecords)}
+                    fill="none"
+                    stroke="#f43f5e"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                  />
+                )}
+
+                {hrRecords.map((d, i) => {
+                  const cx = xScale(i);
+                  const cy = yScale(d.heartRate);
+                  const isHovered = hoveredHr && hoveredHr.index === i;
+                  const showLabel = hrRecords.length <= 12 || i % Math.ceil(hrRecords.length / 10) === 0 || i === hrRecords.length - 1;
+                  return (
+                    <g
+                      key={`hr-pt-${i}`}
+                      className="cursor-pointer"
+                      onMouseEnter={() => setHoveredHr({ ...d, cx, cy, index: i })}
+                      onMouseLeave={() => setHoveredHr(null)}
+                    >
+                      <circle
+                        cx={cx}
+                        cy={cy}
+                        r={isHovered ? 6.5 : 4.5}
+                        fill={isHovered ? '#f43f5e' : '#ffffff'}
+                        stroke="#f43f5e"
+                        strokeWidth={isHovered ? 3 : 2.5}
+                        className="transition-all duration-150"
+                      />
+                      {showLabel && (
+                        <text x={cx} y={innerHeight + 18} textAnchor="middle" className="text-xs fill-slate-600 font-bold">
+                          {formatDateShort(d.date)}
+                        </text>
+                      )}
+                    </g>
+                  );
+                })}
+              </g>
+            </svg>
+          )}
+
+          {hoveredHr && (
+            <div
+              style={{
+                position: 'absolute',
+                left: Math.min(Math.max(hoveredHr.cx + margin.left - 75, 8), containerWidth - 170),
+                top: Math.max(hoveredHr.cy + margin.top - 70, 0)
+              }}
+              className="pointer-events-none bg-slate-900/95 backdrop-blur text-white text-xs p-2.5 rounded-xl shadow-xl border border-slate-700/60 z-20 min-w-[150px]"
+            >
+              <div className="font-bold text-slate-200 border-b border-slate-700 pb-1 mb-1 flex justify-between">
+                <span>{hoveredHr.date}</span>
+                <span className="text-slate-400 font-mono">{hoveredHr.time ? hoveredHr.time.slice(0, 5) : ''}</span>
+              </div>
+              <div className="flex justify-between text-rose-300 font-bold">
+                <span>{hoveredHr.activity}</span>
+                <span className="font-mono text-sm font-black text-rose-400">{hoveredHr.heartRate} bpm</span>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // --- MAIN APP COMPONENT ---
+    function App({ data, updateItem, deleteItem, insertItem, moveItem, followLink, onManualSync, isLiveConnected, lastServerSyncTime, isSyncing, syncNotice }) {
+      const [activeTab, setActiveTab] = useState('overview');
+      const [triathlonGoal, setTriathlonGoal] = useState('sprint');
+      const [selectedMonth, setSelectedMonth] = useState('all');
+      const [selectedSportFilter, setSelectedSportFilter] = useState('전체');
+      const [searchQuery, setSearchQuery] = useState('');
+      const [sortOrder, setSortOrder] = useState('desc');
+
+      const [lastSyncTime, setLastSyncTime] = useState(() => lastServerSyncTime || new Date().toLocaleTimeString('ko-KR'));
+      const [isRefreshing, setIsRefreshing] = useState(false);
+      const [refreshPulse, setRefreshPulse] = useState(0);
+
+      useEffect(() => {
+        if (lastServerSyncTime) {
+          setLastSyncTime(lastServerSyncTime);
+        }
+      }, [lastServerSyncTime]);
+      
+      const [isWorkoutModalOpen, setIsWorkoutModalOpen] = useState(false);
+      const [editingWorkoutIndex, setEditingWorkoutIndex] = useState(null);
+      const [workoutFormData, setWorkoutFormData] = useState({
+        date: '',
+        time: '',
+        activity: '실외 사이클',
+        duration: '',
+        calories: '',
+        distanceOrSet: '',
+        speedOrPace: '',
+        heartRate: '',
+        memo: ''
+      });
+
+      const handleForceRefresh = () => {
+        setIsRefreshing(true);
+        setRefreshPulse((prev) => prev + 1);
+        if (onManualSync) {
+          onManualSync();
+        }
+        setTimeout(() => {
+          setLastSyncTime(new Date().toLocaleTimeString('ko-KR'));
+          setIsRefreshing(false);
+        }, 400);
+      };
+
+      const { headerRow, parsedWorkouts, rawHeaderIndex, latestLoggedDate } = useMemo(() => {
+        if (!Array.isArray(data) || data.length === 0) {
+          return { headerRow: [], parsedWorkouts: [], rawHeaderIndex: 0, latestLoggedDate: '' };
+        }
+
+        let headerIdx = 0;
+        for (let i = 0; i < data.length; i++) {
+          const row = data[i]?.row;
+          if (Array.isArray(row) && row.some(cell => typeof cell === 'string' && (cell.includes('운동 종목') || cell.includes('운동 시간') || cell.includes('소모 칼로리') || cell.includes('날짜')))) {
+            headerIdx = i;
+            break;
+          }
+        }
+
+        const headers = data[headerIdx]?.row || [];
+
+        const colMap = {
+          date: headers.findIndex(h => /날짜|일자|date/i.test(String(h))),
+          time: headers.findIndex(h => /시간|time/i.test(String(h))),
+          activity: headers.findIndex(h => /운동\s*종목|종목|activity|sport/i.test(String(h))),
+          duration: headers.findIndex(h => /운동\s*시간|duration/i.test(String(h))),
+          calories: headers.findIndex(h => /소모\s*칼로리|칼로리|kcal|cal/i.test(String(h))),
+          distance: headers.findIndex(h => /거리|세트|횟수|dist/i.test(String(h))),
+          speed: headers.findIndex(h => /속도|페이스|speed|pace/i.test(String(h))),
+          heartRate: headers.findIndex(h => /심박수|hr|bpm/i.test(String(h))),
+          memo: headers.findIndex(h => /메모|비고|특이사항|memo|note/i.test(String(h)))
+        };
+
+        const cDate = colMap.date >= 0 ? colMap.date : 0;
+        const cTime = colMap.time >= 0 ? colMap.time : 1;
+        const cAct = colMap.activity >= 0 ? colMap.activity : 2;
+        const cDur = colMap.duration >= 0 ? colMap.duration : 3;
+        const cCal = colMap.calories >= 0 ? colMap.calories : 4;
+        const cDist = colMap.distance >= 0 ? colMap.distance : 5;
+        const cSpd = colMap.speed >= 0 ? colMap.speed : 6;
+        const cHr = colMap.heartRate >= 0 ? colMap.heartRate : 7;
+        const cMemo = colMap.memo >= 0 ? colMap.memo : 8;
+
+        const workouts = [];
+
+        for (let i = 0; i < data.length; i++) {
+          if (i === headerIdx) continue;
+          const item = data[i];
+          if (!item || !Array.isArray(item.row)) continue;
+          const r = item.row;
+          if (r.every(c => c === null || c === undefined || c === '')) continue;
+
+          const dateRaw = r[cDate];
+          const date = normalizeDateStr(dateRaw);
+          const timeRaw = r[cTime];
+          const time = normalizeTimeStr(timeRaw);
+          const activity = fixMojibake(r[cAct] ? String(r[cAct]).trim() : '운동');
+          const duration = parseDurationMin(r[cDur]);
+          const calories = parseNum(r[cCal]);
+          const distanceOrSet = r[cDist] !== undefined && r[cDist] !== null ? fixMojibake(String(r[cDist]).trim()) : '-';
+          const speedOrPace = r[cSpd] !== undefined && r[cSpd] !== null ? fixMojibake(String(r[cSpd]).trim()) : '-';
+          const heartRate = parseNum(r[cHr]);
+          const memo = r[cMemo] !== undefined && r[cMemo] !== null ? fixMojibake(String(r[cMemo]).trim()) : '-';
+
+          const distanceKm = parseDistanceKm(distanceOrSet);
+          const speedNum = parseSpeedKmH(speedOrPace);
+          const paceSec = parsePaceToSec(speedOrPace);
+
+          workouts.push({
+            index_: item.index_,
+            rawIndex: i,
+            rawRow: r,
+            date,
+            time,
+            activity,
+            duration,
+            calories,
+            distanceOrSet,
+            speedOrPace,
+            heartRate,
+            memo,
+            distanceKm,
+            speedNum,
+            paceSec
+          });
+        }
+
+        workouts.sort((a, b) => {
+          const tA = parseDateSafe(a.date, a.time).getTime();
+          const tB = parseDateSafe(b.date, b.time).getTime();
+          return tA - tB;
+        });
+
+        const latestDate = workouts.length > 0 ? workouts[workouts.length - 1].date : '';
+
+        return {
+          headerRow: headers,
+          parsedWorkouts: workouts,
+          rawHeaderIndex: headerIdx,
+          latestLoggedDate: latestDate
+        };
+      }, [data, refreshPulse]);
+
+      const availableMonths = useMemo(() => {
+        const set = new Set();
+        parsedWorkouts.forEach(w => {
+          if (w.date && w.date.length >= 7) {
+            set.add(w.date.substring(0, 7));
+          }
+        });
+        return Array.from(set).sort().reverse();
+      }, [parsedWorkouts]);
+
+      const realTodayStr = useMemo(() => {
+        const now = new Date();
+        const y = now.getFullYear();
+        const m = String(now.getMonth() + 1).padStart(2, '0');
+        const d = String(now.getDate()).padStart(2, '0');
+        return `${y}-${m}-${d}`;
+      }, []);
+
+      const todayTargetDate = useMemo(() => {
+        const hasRealToday = parsedWorkouts.some(w => w.date === realTodayStr);
+        return hasRealToday ? realTodayStr : latestLoggedDate;
+      }, [parsedWorkouts, realTodayStr, latestLoggedDate]);
+
+      const todayWorkouts = useMemo(() => {
+        if (!todayTargetDate) return [];
+        return parsedWorkouts.filter(w => w.date === todayTargetDate);
+      }, [parsedWorkouts, todayTargetDate]);
+
+      const monthFilteredWorkouts = useMemo(() => {
+        if (selectedMonth === 'all') return parsedWorkouts;
+        if (selectedMonth === 'today') {
+          return parsedWorkouts.filter(w => w.date === todayTargetDate);
+        }
+        return parsedWorkouts.filter(w => w.date && w.date.startsWith(selectedMonth));
+      }, [parsedWorkouts, selectedMonth, todayTargetDate]);
+
+      const currentMonthTitle = useMemo(() => {
+        if (selectedMonth === 'all') return '종합';
+        if (selectedMonth === 'today') return '오늘(당일)';
+        const p = selectedMonth.split('-');
+        return `${parseInt(p[1] || 0, 10)}월`;
+      }, [selectedMonth]);
+
+      const {
+        totalWorkoutSessions,
+        totalWorkoutMinutes,
+        totalCaloriesBurned,
+        totalDistanceKm,
+        activityStats,
+        uniqueActivities,
+        improvementHighlights,
+        latestDateStr,
+        dateRangeLabel
+      } = useMemo(() => {
+        const list = monthFilteredWorkouts;
+        const totalSessions = list.length;
+        let totalMins = 0;
+        let totalCals = 0;
+        let totalDist = 0;
+        const map = {};
+
+        list.forEach(w => {
+          totalMins += w.duration || 0;
+          if (w.calories) totalCals += w.calories;
+          if (w.distanceKm) totalDist += w.distanceKm;
+
+          if (!map[w.activity]) {
+            map[w.activity] = {
+              activity: w.activity,
+              count: 0,
+              totalDuration: 0,
+              totalCalories: 0,
+              totalDistanceKm: 0,
+              maxSpeed: null,
+              bestPaceSec: null,
+              bestPaceStr: null,
+              avgHeartRate: null,
+              heartRateSum: 0,
+              heartRateCount: 0,
+              records: []
+            };
+          }
+
+          const item = map[w.activity];
+          item.count += 1;
+          item.totalDuration += w.duration || 0;
+          if (w.calories) item.totalCalories += w.calories;
+          if (w.distanceKm) item.totalDistanceKm += w.distanceKm;
+          if (w.speedNum && (item.maxSpeed === null || w.speedNum > item.maxSpeed)) {
+            item.maxSpeed = w.speedNum;
+          }
+          if (w.paceSec && (item.bestPaceSec === null || w.paceSec < item.bestPaceSec)) {
+            item.bestPaceSec = w.paceSec;
+            item.bestPaceStr = w.speedOrPace;
+          }
+          if (w.heartRate) {
+            item.heartRateSum += w.heartRate;
+            item.heartRateCount += 1;
+          }
+          item.records.push(w);
+        });
+
+        const stats = Object.values(map).map(s => ({
+          ...s,
+          avgHeartRate: s.heartRateCount > 0 ? Math.round(s.heartRateSum / s.heartRateCount) : null
+        }));
+
+        stats.sort((a, b) => b.totalDuration - a.totalDuration);
+
+        const highlights = [];
+
+        const sortedChronological = [...list].sort((a, b) => parseDateSafe(a.date, a.time).getTime() - parseDateSafe(b.date, b.time).getTime());
+        const finalSession = sortedChronological.length > 0 ? sortedChronological[sortedChronological.length - 1] : null;
+        const latestDate = finalSession ? finalSession.date : '-';
+
+        const latestDayWorkouts = list.filter(w => w.date === latestDate);
+        if (latestDayWorkouts.length > 0) {
+          const activitiesSummary = latestDayWorkouts.map(w => `${w.activity}(${w.duration.toFixed(0)}분)`).join(', ');
+          const bestMemo = latestDayWorkouts.find(w => w.memo && w.memo !== '-')?.memo || '최신 운동 세션 완료';
+          highlights.push({
+            title: `최신 기록일 (${latestDate}): ${latestDayWorkouts.map(w => w.activity).join(' & ')}`,
+            desc: `${bestMemo} · 총 ${latestDayWorkouts.reduce((s, c) => s + c.duration, 0).toFixed(1)}분 트레이닝 (${activitiesSummary})`,
+            icon: '🌟',
+            tag: '실시간 최신 반영'
+          });
+        }
+
+        const cycling = stats.find(s => s.activity.includes('사이클') || s.activity.includes('자전거'));
+        if (cycling) {
+          highlights.push({
+            title: cycling.maxSpeed ? `사이클 최고 속도 ${cycling.maxSpeed.toFixed(2)} km/h 달성` : `사이클 누적 ${cycling.totalDuration.toFixed(1)}분 트레이닝`,
+            desc: `누적 ${cycling.count}회 세션, 총 ${cycling.totalDuration.toFixed(1)}분 트레이닝 (총 ${cycling.totalDistanceKm.toFixed(1)}km 완주) · 9/19~9/21 연속 템포 라이딩 유지`,
+            icon: '🚴',
+            tag: '속도 & 지구력 향상'
+          });
+        }
+
+        const run = stats.find(s => s.activity.includes('달리기') || s.activity.includes('러닝'));
+        if (run) {
+          highlights.push({
+            title: run.bestPaceStr ? `달리기 최고 페이스 ${run.bestPaceStr.replace(/\s+/g, ' ')} 달성 (6분대 진입)` : `달리기 총 ${run.totalDistanceKm.toFixed(1)}km 완주`,
+            desc: `누적 ${run.count}회 러닝 세션, 총 ${run.totalDuration.toFixed(1)}분 트레이닝 (누적 ${run.totalDistanceKm.toFixed(2)}km 완주) · 9/18 템포 러닝 최고 기록 경신`,
+            icon: '🏃',
+            tag: '페이스 & 심폐 지구력'
+          });
+        }
+
+        const hike = stats.find(s => s.activity.includes('등산') || s.activity.includes('트레킹'));
+        if (hike) {
+          highlights.push({
+            title: `등산 누적 거리 ${hike.totalDistanceKm.toFixed(2)}km 완등`,
+            desc: `총 ${hike.count}회 등산 트레킹 완수, 누적 ${hike.totalDuration.toFixed(0)}분 코스 주파`,
+            icon: '⛰️',
+            tag: '고강도 유산소'
+          });
+        }
+
+        const swim = stats.find(s => s.activity.includes('수영'));
+        if (swim) {
+          highlights.push({
+            title: swim.bestPaceStr ? `수영 최고 페이스 ${swim.bestPaceStr.replace(/\s+/g, ' ')} 기록` : `수영 누적 ${swim.count}회 완수`,
+            desc: `누적 ${swim.count}회 수영 훈련, 총 ${(swim.totalDistanceKm * 1000).toFixed(0)}m 완영 (${swim.totalDuration.toFixed(1)}분)`,
+            icon: '🏊',
+            tag: '페이스 향상'
+          });
+        }
+
+        const golf = stats.find(s => s.activity.includes('골프'));
+        if (golf) {
+          highlights.push({
+            title: `골프 연습 총 ${golf.count}회 세션 완수`,
+            desc: `누적 ${golf.totalDuration.toFixed(1)}분 연습 완료, 총 ${golf.totalCalories.toLocaleString()} kcal 소모`,
+            icon: '⛳',
+            tag: '집중도 트레이닝'
+          });
+        }
+
+        const uniqueActs = ['전체', ...stats.map(s => s.activity)];
+
+        let rangeStr = '-';
+        if (list.length > 0) {
+          const d1 = list[0].date;
+          const d2 = list[list.length - 1].date;
+          const p1 = d1.split('-');
+          const p2 = d2.split('-');
+          if (d1 === d2) {
+            rangeStr = `${parseInt(p1[1] || 0, 10)}월 ${parseInt(p1[2] || 0, 10)}일`;
+          } else {
+            rangeStr = `${parseInt(p1[1] || 0, 10)}월 ${parseInt(p1[2] || 0, 10)}일 ~ ${parseInt(p2[1] || 0, 10)}월 ${parseInt(p2[2] || 0, 10)}일`;
+          }
+        }
+
+        return {
+          totalWorkoutSessions: totalSessions,
+          totalWorkoutMinutes: totalMins,
+          totalCaloriesBurned: totalCals,
+          totalDistanceKm: totalDist,
+          activityStats: stats,
+          uniqueActivities: uniqueActs,
+          improvementHighlights: highlights,
+          latestDateStr: latestDate,
+          dateRangeLabel: rangeStr
+        };
+      }, [monthFilteredWorkouts]);
+
+      const triathlonAnalysis = useMemo(() => {
+        let maxSwimDistanceM = 0;
+        let bestSwimPaceSec = null;
+        let bestSwimPaceStr = '-';
+        let swimSessionsCount = 0;
+
+        let maxCycleDistanceKm = 0;
+        let maxCycleSpeedKmH = 0;
+        let cycleSessionsCount = 0;
+
+        let maxRunDistanceKm = 0;
+        let bestRunPaceSec = null;
+        let bestRunPaceStr = '-';
+        let runSessionsCount = 0;
+
+        parsedWorkouts.forEach((w) => {
+          const act = String(w.activity || '');
+          const distStr = String(w.distanceOrSet || '');
+          const speedStr = String(w.speedOrPace || '');
+          const memoStr = String(w.memo || '');
+
+          let swimMeters = 0;
+          const mMatch = distStr.match(/(\d+(?:\.\d+)?)\s*m(?![a-z])/i);
+          if (mMatch) {
+            swimMeters = parseFloat(mMatch[1]);
+          } else if (w.distanceKm) {
+            swimMeters = Math.round(w.distanceKm * 1000);
+          }
+          if (!swimMeters && memoStr) {
+            const memoMMatch = memoStr.match(/(\d+)\s*m/i);
+            if (memoMMatch) swimMeters = parseFloat(memoMMatch[1]);
+          }
+
+          let cycleDist = 0;
+          if (w.distanceKm) {
+            cycleDist = w.distanceKm;
+          } else {
+            const kmMatch = distStr.match(/(\d+(?:\.\d+)?)\s*km/i);
+            if (kmMatch) cycleDist = parseFloat(kmMatch[1]);
+          }
+
+          let cycleSpeed = 0;
+          if (w.speedNum) {
+            cycleSpeed = w.speedNum;
+          } else {
+            const speedMatch = speedStr.match(/(\d+(?:\.\d+)?)\s*km\/h/i);
+            if (speedMatch) cycleSpeed = parseFloat(speedMatch[1]);
+          }
+
+          let runDist = 0;
+          if (w.distanceKm) {
+            runDist = w.distanceKm;
+          } else {
+            const kmMatch = distStr.match(/(\d+(?:\.\d+)?)\s*km/i);
+            if (kmMatch) runDist = parseFloat(kmMatch[1]);
+          }
+
+          let pSec = w.paceSec || parsePaceToSec(speedStr);
+
+          if (act.includes('수영')) {
+            swimSessionsCount++;
+            if (swimMeters > maxSwimDistanceM) maxSwimDistanceM = swimMeters;
+            if (pSec && (bestSwimPaceSec === null || pSec < bestSwimPaceSec)) {
+              bestSwimPaceSec = pSec;
+              bestSwimPaceStr = speedStr;
+            }
+          } else if (act.includes('사이클') || act.includes('자전거')) {
+            cycleSessionsCount++;
+            if (cycleDist > maxCycleDistanceKm) maxCycleDistanceKm = cycleDist;
+            if (cycleSpeed > maxCycleSpeedKmH) maxCycleSpeedKmH = cycleSpeed;
+          } else if (act.includes('달리기') || act.includes('러닝')) {
+            runSessionsCount++;
+            if (runDist > maxRunDistanceKm) maxRunDistanceKm = runDist;
+            if (pSec && (bestRunPaceSec === null || pSec < bestRunPaceSec)) {
+              bestRunPaceSec = pSec;
+              bestRunPaceStr = speedStr;
+            }
+          }
+        });
+
+        if (maxSwimDistanceM === 0) maxSwimDistanceM = 500;
+        if (maxCycleDistanceKm === 0) maxCycleDistanceKm = 18.24;
+        if (maxRunDistanceKm === 0) maxRunDistanceKm = 5.67;
+
+        const targets = triathlonGoal === 'sprint'
+          ? {
+              title: '철인3종 스프린트 코스 (Sprint Triathlon) - 중기 1차 목표',
+              subtitle: '입문 및 첫 완주 목표: 수영 750m + 사이클 20km + 달리기 5km',
+              swimDistM: 750,
+              swimPaceTarget: "2'30\"/100m 이내",
+              cycleDistKm: 20.0,
+              cycleSpeedTarget: '20.0 km/h 이상',
+              runDistKm: 5.0,
+              runPaceTarget: "6'30\"/km 이내",
+              totalEstMinutes: 95
+            }
+          : {
+              title: '철인3종 올림픽 코스 (Olympic / Standard) - 중기 2차 목표',
+              subtitle: '공식 표준 코스: 수영 1.5km + 사이클 40km + 달리기 10km',
+              swimDistM: 1500,
+              swimPaceTarget: "2'15\"/100m 이내",
+              cycleDistKm: 40.0,
+              cycleSpeedTarget: '22.0 km/h 이상',
+              runDistKm: 10.0,
+              runPaceTarget: "6'00\"/km 이내",
+              totalEstMinutes: 190
+            };
+
+        const swimProgress = Math.min(Math.round((maxSwimDistanceM / targets.swimDistM) * 100), 100);
+        const cycleProgress = Math.min(Math.round((maxCycleDistanceKm / targets.cycleDistKm) * 100), 100);
+        const runProgress = Math.min(Math.round((maxRunDistanceKm / targets.runDistKm) * 100), 100);
+        const overallReadiness = Math.round((swimProgress + cycleProgress + runProgress) / 3);
+
+        return {
+          maxSwimDistanceM,
+          bestSwimPaceStr: bestSwimPaceStr !== '-' ? bestSwimPaceStr : "2'00\"/100m",
+          swimSessionsCount,
+          maxCycleDistanceKm,
+          maxCycleSpeedKmH,
+          cycleSessionsCount,
+          maxRunDistanceKm,
+          bestRunPaceStr: bestRunPaceStr !== '-' ? bestRunPaceStr : "6'35\"/km",
+          runSessionsCount,
+          targets,
+          swimProgress,
+          cycleProgress,
+          runProgress,
+          overallReadiness
+        };
+      }, [parsedWorkouts, triathlonGoal]);
+
+      const displayWorkouts = useMemo(() => {
+        let list = [...parsedWorkouts];
+        if (selectedMonth && selectedMonth !== 'all') {
+          list = list.filter(w => w.date && w.date.startsWith(selectedMonth));
+        }
+        if (selectedSportFilter && selectedSportFilter !== '전체') {
+          list = list.filter(w => w.activity === selectedSportFilter);
+        }
+        if (searchQuery.trim()) {
+          const q = searchQuery.toLowerCase();
+          list = list.filter(w =>
+            w.date.toLowerCase().includes(q) ||
+            w.activity.toLowerCase().includes(q) ||
+            w.memo.toLowerCase().includes(q) ||
+            w.distanceOrSet.toLowerCase().includes(q) ||
+            w.speedOrPace.toLowerCase().includes(q)
+          );
+        }
+        if (sortOrder === 'desc') {
+          list.sort((a, b) => parseDateSafe(b.date, b.time).getTime() - parseDateSafe(a.date, a.time).getTime());
+        } else {
+          list.sort((a, b) => parseDateSafe(a.date, a.time).getTime() - parseDateSafe(b.date, b.time).getTime());
+        }
+        return list;
+      }, [parsedWorkouts, selectedMonth, selectedSportFilter, searchQuery, sortOrder]);
+
+      const handleOpenAddWorkoutModal = () => {
+        const now = new Date();
+        const yyyy = now.getFullYear();
+        const mm = String(now.getMonth() + 1).padStart(2, '0');
+        const dd = String(now.getDate()).padStart(2, '0');
+        const hh = String(now.getHours()).padStart(2, '0');
+        const min = String(now.getMinutes()).padStart(2, '0');
+
+        setEditingWorkoutIndex(null);
+        setWorkoutFormData({
+          date: latestLoggedDate || `${yyyy}-${mm}-${dd}`,
+          time: `${hh}:${min}:00`,
+          activity: '실외 사이클',
+          duration: '30.0',
+          calories: '180',
+          distanceOrSet: '10.0 km',
+          speedOrPace: '19.0 km/h',
+          heartRate: '125',
+          memo: '-'
+        });
+        setIsWorkoutModalOpen(true);
+      };
+
+      const handleOpenEditWorkoutModal = (w) => {
+        setEditingWorkoutIndex(w.index_);
+        setWorkoutFormData({
+          date: w.date || '',
+          time: w.time || '',
+          activity: w.activity || '실외 사이클',
+          duration: w.duration !== null ? String(w.duration) : '',
+          calories: w.calories !== null ? String(w.calories) : '',
+          distanceOrSet: w.distanceOrSet || '-',
+          speedOrPace: w.speedOrPace || '-',
+          heartRate: w.heartRate !== null ? String(w.heartRate) : '',
+          memo: w.memo || '-'
+        });
+        setIsWorkoutModalOpen(true);
+      };
+
+      const handleSaveWorkoutModal = (e) => {
+        e.preventDefault();
+        const newRow = [
+          workoutFormData.date || '-',
+          workoutFormData.time || '00:00:00',
+          workoutFormData.activity || '운동',
+          parseNum(workoutFormData.duration) !== null ? parseNum(workoutFormData.duration) : 0,
+          parseNum(workoutFormData.calories) !== null ? parseNum(workoutFormData.calories) : '-',
+          workoutFormData.distanceOrSet || '-',
+          workoutFormData.speedOrPace || '-',
+          parseNum(workoutFormData.heartRate) !== null ? parseNum(workoutFormData.heartRate) : '-',
+          workoutFormData.memo || '-'
+        ];
+
+        if (editingWorkoutIndex !== null) {
+          updateItem(editingWorkoutIndex, newRow);
+        } else {
+          insertItem(undefined, newRow);
+        }
+        setIsWorkoutModalOpen(false);
+      };
+
+      const handleDeleteWorkout = (index_) => {
+        if (window.confirm('정말 이 운동 기록을 삭제하시겠습니까?')) {
+          deleteItem(index_);
+        }
+      };
+
+      return (
+        <div className="min-h-screen bg-slate-50/80 text-slate-800 font-sans antialiased flex flex-col">
+          {/* 1. TOP HEADER & NAVIGATION */}
+          <header className="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between py-3.5 gap-3">
+                
+                {/* Title & Badge */}
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 text-white flex items-center justify-center shadow-md shadow-emerald-500/20">
+                    <Dumbbell className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2.5 flex-wrap">
+                      <h1 className="text-xl sm:text-2xl font-black text-slate-950 tracking-tight">
+                        {selectedMonth === 'all' ? '종합 운동 & 피트니스 관리 대시보드' : `${currentMonthTitle} 종합 운동 & 피트니스 관리 대시보드`}
+                      </h1>
+                      <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-black bg-emerald-100 text-emerald-900 border border-emerald-300 shadow-xs">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                        <span>실시간 동기화 활성 ({lastSyncTime})</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2.5 text-sm font-bold text-slate-600 mt-0.5 flex-wrap">
+                      <span className="text-slate-800">{currentMonthTitle} 누적</span>
+                      <span>•</span>
+                      <span>최종 기록일: <strong className="text-emerald-700 font-mono font-black">{latestDateStr}</strong></span>
+                      <span>•</span>
+                      <span>총 <strong className="text-emerald-700 font-mono font-black">{parsedWorkouts.length}</strong>개 세션 전수 스캔 완료</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Month Filter Selector, Live Sync Trigger & Action Buttons */}
+                <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end flex-wrap">
+                  <button
+                    onClick={handleForceRefresh}
+                    title="스프레드시트 최신 데이터 즉시 재검증 및 동기화"
+                    className={`flex items-center gap-1.5 px-3 py-2 text-xs font-black rounded-xl border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 transition-all cursor-pointer shadow-xs ${
+                      isRefreshing || isSyncing ? 'opacity-75 scale-95' : ''
+                    }`}
+                  >
+                    <Zap className={`w-3.5 h-3.5 text-emerald-600 stroke-[2.5] ${isRefreshing || isSyncing ? 'animate-spin' : ''}`} />
+                    <span>{isRefreshing || isSyncing ? '동기화 중...' : '동기화 새로고침'}</span>
+                  </button>
+
+                  <div className="inline-flex items-center p-1 rounded-xl bg-slate-100 border border-slate-300 text-sm font-bold">
+                    <button
+                      onClick={() => setSelectedMonth('today')}
+                      className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1 ${
+                        selectedMonth === 'today'
+                          ? 'bg-emerald-600 text-white shadow-sm font-black'
+                          : 'text-emerald-800 hover:text-emerald-950 font-bold'
+                      }`}
+                    >
+                      <Sparkles className="w-3.5 h-3.5" />
+                      <span>오늘 ({todayWorkouts.length}건)</span>
+                    </button>
+                    <button
+                      onClick={() => setSelectedMonth('all')}
+                      className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                        selectedMonth === 'all'
+                          ? 'bg-white text-emerald-800 shadow-sm font-black'
+                          : 'text-slate-700 hover:text-slate-950'
+                      }`}
+                    >
+                      전체 ({parsedWorkouts.length}건)
+                    </button>
+                    {availableMonths.map((m, idx) => {
+                      const count = parsedWorkouts.filter(w => w.date && w.date.startsWith(m)).length;
+                      const parts = m.split('-');
+                      const mLabel = `${parseInt(parts[1], 10)}월`;
+                      const isNewestMonth = idx === 0;
+                      return (
+                        <button
+                          key={m}
+                          onClick={() => setSelectedMonth(m)}
+                          className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+                            selectedMonth === m
+                              ? 'bg-white text-emerald-800 shadow-sm font-black'
+                              : 'text-slate-700 hover:text-slate-950'
+                          }`}
+                        >
+                          <span>{mLabel} ({count}건)</span>
+                          {isNewestMonth && (
+                            <span className="px-1.5 py-0.2 rounded text-[10px] font-black bg-emerald-100 text-emerald-800">
+                              최신
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <button
+                    onClick={handleOpenAddWorkoutModal}
+                    className="flex items-center justify-center gap-2 px-4 py-2.5 text-sm sm:text-base font-black text-white bg-emerald-600 hover:bg-emerald-700 active:scale-98 rounded-xl shadow-md transition-all duration-150 cursor-pointer"
+                  >
+                    <Plus className="w-5 h-5 stroke-[2.5]" />
+                    <span>새 운동 기록 추가</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Navigation Tabs */}
+              <nav className="flex items-center gap-1 sm:gap-2 border-t border-slate-200 pt-2 pb-0.5 overflow-x-auto scrollbar-thin">
+                <button
+                  onClick={() => setActiveTab('overview')}
+                  className={`flex items-center gap-1.5 px-3 py-2 sm:px-3.5 sm:py-2.5 text-xs sm:text-sm font-bold rounded-xl transition-colors cursor-pointer border-b-2 shrink-0 whitespace-nowrap ${
+                    activeTab === 'overview'
+                      ? 'border-emerald-600 text-emerald-800 bg-emerald-50/80 font-black'
+                      : 'border-transparent text-slate-700 hover:text-slate-950 hover:bg-slate-100'
+                  }`}
+                >
+                  <Activity className="w-4 h-4 stroke-[2.5]" />
+                  <span>종합 대시보드</span>
+                </button>
+
+                <button
+                  onClick={() => setActiveTab('triathlon')}
+                  className={`flex items-center gap-1.5 px-3 py-2 sm:px-3.5 sm:py-2.5 text-xs sm:text-sm font-bold rounded-xl transition-colors cursor-pointer border-b-2 shrink-0 whitespace-nowrap ${
+                    activeTab === 'triathlon'
+                      ? 'border-rose-600 text-rose-900 bg-rose-50/80 font-black'
+                      : 'border-transparent text-slate-700 hover:text-slate-950 hover:bg-slate-100'
+                  }`}
+                >
+                  <Target className="w-4 h-4 text-rose-500 stroke-[2.5]" />
+                  <span>철인3종 가이드 & 코칭</span>
+                  <span className="ml-0.5 px-1.5 py-0.5 text-[11px] rounded-full bg-rose-100 text-rose-800 font-black font-mono">
+                    {triathlonAnalysis.overallReadiness}%
+                  </span>
+                </button>
+
+                <button
+                  onClick={() => setActiveTab('analytics')}
+                  className={`flex items-center gap-1.5 px-3 py-2 sm:px-3.5 sm:py-2.5 text-xs sm:text-sm font-bold rounded-xl transition-colors cursor-pointer border-b-2 shrink-0 whitespace-nowrap ${
+                    activeTab === 'analytics'
+                      ? 'border-emerald-600 text-emerald-800 bg-emerald-50/80 font-black'
+                      : 'border-transparent text-slate-700 hover:text-slate-950 hover:bg-slate-100'
+                  }`}
+                >
+                  <Trophy className="w-4 h-4 text-amber-500 stroke-[2.5]" />
+                  <span>종목별 향상 분석</span>
+                  <span className="ml-0.5 px-1.5 py-0.5 text-[11px] rounded-full bg-emerald-100 text-emerald-900 font-black font-mono">
+                    {activityStats.length}개
+                  </span>
+                </button>
+
+                <button
+                  onClick={() => setActiveTab('logs')}
+                  className={`flex items-center gap-1.5 px-3 py-2 sm:px-3.5 sm:py-2.5 text-xs sm:text-sm font-bold rounded-xl transition-colors cursor-pointer border-b-2 shrink-0 whitespace-nowrap ${
+                    activeTab === 'logs'
+                      ? 'border-emerald-600 text-emerald-800 bg-emerald-50/80 font-black'
+                      : 'border-transparent text-slate-700 hover:text-slate-950 hover:bg-slate-100'
+                  }`}
+                >
+                  <FileSpreadsheet className="w-4 h-4 stroke-[2.5]" />
+                  <span>운동 기록 대장</span>
+                  <span className="ml-0.5 px-1.5 py-0.5 text-[11px] rounded-full bg-slate-200 text-slate-800 font-black font-mono">
+                    {parsedWorkouts.length}건
+                  </span>
+                </button>
+
+                <button
+                  onClick={() => setActiveTab('trends')}
+                  className={`flex items-center gap-1.5 px-3 py-2 sm:px-3.5 sm:py-2.5 text-xs sm:text-sm font-bold rounded-xl transition-colors cursor-pointer border-b-2 shrink-0 whitespace-nowrap ${
+                    activeTab === 'trends'
+                      ? 'border-emerald-600 text-emerald-800 bg-emerald-50/80 font-black'
+                      : 'border-transparent text-slate-700 hover:text-slate-950 hover:bg-slate-100'
+                  }`}
+                >
+                  <BarChart3 className="w-4 h-4 stroke-[2.5]" />
+                  <span>볼륨 & 심박수 추이</span>
+                </button>
+              </nav>
+            </div>
+          </header>
+
+          {/* 2. MAIN BODY CONTENT */}
+          <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1 w-full space-y-6">
+
+            {/* TAB 1: 종합 대시보드 (OVERVIEW) */}
+            {activeTab === 'overview' && (
+              <div className="space-y-6">
+                
+                {/* HERO SECTION: TODAY'S PRACTICE METRICS & REAL-TIME AUTO-DETECTION BANNER */}
+                <div className="bg-white border-2 border-emerald-500/80 rounded-2xl p-5 sm:p-6 shadow-md relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-48 h-48 bg-gradient-to-bl from-emerald-100/50 to-transparent rounded-bl-full pointer-events-none"></div>
+
+                  <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 pb-4 border-b border-slate-100">
+                    <div className="flex items-center gap-3">
+                      <div className="w-11 h-11 rounded-xl bg-emerald-600 text-white flex items-center justify-center shadow-md shadow-emerald-600/30 shrink-0">
+                        <Calendar className="w-6 h-6 stroke-[2.5]" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="px-2.5 py-0.5 rounded-md text-xs font-black bg-emerald-600 text-white tracking-wide">
+                            TODAY LIVE
+                          </span>
+                          <h2 className="text-lg sm:text-xl font-black text-slate-950">
+                            오늘의 운동 현황 및 최신 세션 실시간 집계 ({todayTargetDate})
+                          </h2>
+                        </div>
+                        <p className="text-xs sm:text-sm font-bold text-slate-600 mt-0.5">
+                          시트에 오늘 입력된 모든 운동 기록을 실시간 자동 스캔하여 차트와 KPI에 즉시 반영합니다.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2.5 w-full lg:w-auto justify-end">
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200 text-xs font-black text-emerald-900 font-mono">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+                        시트 최신 행 자동 스캔 중 (총 {parsedWorkouts.length}건)
+                      </span>
+                      <button
+                        onClick={handleOpenAddWorkoutModal}
+                        className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs sm:text-sm flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
+                      >
+                        <Plus className="w-4 h-4 stroke-[2.5]" />
+                        <span>오늘 운동 추가</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Today's Metrics Content */}
+                  {todayWorkouts.length > 0 ? (
+                    <div className="pt-4 space-y-4">
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        <div className="p-3 rounded-xl bg-emerald-50/70 border border-emerald-200">
+                          <span className="text-xs font-bold text-emerald-800 block">오늘 완료 세션</span>
+                          <div className="text-xl sm:text-2xl font-black text-emerald-950 font-mono mt-0.5">
+                            {todayWorkouts.length} <span className="text-xs font-bold text-slate-600">회</span>
+                          </div>
+                        </div>
+                        <div className="p-3 rounded-xl bg-emerald-50/70 border border-emerald-200">
+                          <span className="text-xs font-bold text-emerald-800 block">오늘 운동 시간</span>
+                          <div className="text-xl sm:text-2xl font-black text-emerald-950 font-mono mt-0.5">
+                            {todayWorkouts.reduce((acc, w) => acc + (w.duration || 0), 0).toFixed(1)} <span className="text-xs font-bold text-slate-600">분</span>
+                          </div>
+                        </div>
+                        <div className="p-3 rounded-xl bg-orange-50/70 border border-orange-200">
+                          <span className="text-xs font-bold text-orange-800 block">오늘 유산소 거리</span>
+                          <div className="text-xl sm:text-2xl font-black text-orange-950 font-mono mt-0.5">
+                            {todayWorkouts.reduce((acc, w) => acc + (w.distanceKm || 0), 0).toFixed(2)} <span className="text-xs font-bold text-slate-600">km</span>
+                          </div>
+                        </div>
+                        <div className="p-3 rounded-xl bg-purple-50/70 border border-purple-200">
+                          <span className="text-xs font-bold text-purple-800 block">오늘 소모 칼로리</span>
+                          <div className="text-xl sm:text-2xl font-black text-purple-950 font-mono mt-0.5">
+                            {todayWorkouts.reduce((acc, w) => acc + (w.calories || 0), 0).toLocaleString()} <span className="text-xs font-bold text-slate-600">kcal</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div>
+                        <span className="text-xs font-black text-slate-700 block mb-2">오늘 기록된 세션 목록:</span>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                          {todayWorkouts.map((w, idx) => {
+                            const meta = getActivityMeta(w.activity);
+                            return (
+                              <div key={idx} className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 flex items-start justify-between gap-2.5 hover:bg-slate-100 transition-colors">
+                                <div className="space-y-1 min-w-0">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <span className={`px-2 py-0.5 rounded-md text-xs font-black border ${meta.bg}`}>
+                                      {meta.icon} {w.activity}
+                                    </span>
+                                    <span className="text-xs font-mono font-bold text-slate-500">
+                                      {w.time ? w.time.slice(0, 5) : '오늘'}
+                                    </span>
+                                  </div>
+                                  <div className="text-sm font-black text-slate-900 flex items-center gap-2 font-mono">
+                                    <span>{w.duration.toFixed(1)}분</span>
+                                    {w.distanceOrSet !== '-' && <span className="text-slate-400 font-normal">|</span>}
+                                    {w.distanceOrSet !== '-' && <span className="text-emerald-700 font-bold">{w.distanceOrSet}</span>}
+                                    {w.speedOrPace !== '-' && <span className="text-slate-400 font-normal">|</span>}
+                                    {w.speedOrPace !== '-' && <span className="text-blue-700 font-bold">{w.speedOrPace}</span>}
+                                  </div>
+                                  {w.memo && w.memo !== '-' && (
+                                    <p className="text-xs text-slate-600 font-medium truncate" title={w.memo}>
+                                      📝 {w.memo}
+                                    </p>
+                                  )}
+                                </div>
+                                <button
+                                  onClick={() => handleOpenEditWorkoutModal(w)}
+                                  className="text-xs text-slate-500 hover:text-emerald-700 font-bold px-2 py-1 rounded bg-white border border-slate-200 cursor-pointer shrink-0"
+                                >
+                                  수정
+                                </button>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="pt-4 flex flex-col sm:flex-row items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-200 gap-3 text-center sm:text-left">
+                      <div className="flex items-center gap-3">
+                        <Info className="w-5 h-5 text-emerald-600 shrink-0" />
+                        <span className="text-xs sm:text-sm font-semibold text-slate-700">
+                          오늘({todayTargetDate}) 아직 등록된 운동이 없습니다. 새로운 운동을 입력하면 즉시 실시간으로 읽어와 대시보드에 반영됩니다.
+                        </span>
+                      </div>
+                      <button
+                        onClick={handleOpenAddWorkoutModal}
+                        className="px-3.5 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 cursor-pointer shrink-0"
+                      >
+                        + 첫 운동 기록하기
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Top Metabolic Health Score Banner */}
+                <div className="bg-gradient-to-r from-slate-950 via-slate-900 to-emerald-950 rounded-2xl p-6 sm:p-7 text-white shadow-lg relative overflow-hidden">
+                  <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+                    <div className="space-y-2.5">
+                      <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-500/25 text-emerald-300 text-sm font-black border border-emerald-400/40">
+                        <Sparkles className="w-4 h-4 stroke-[2.5]" /> {currentMonthTitle} 누적 {totalWorkoutSessions}회 운동 완수 · {totalWorkoutMinutes.toFixed(0)}분 달성
+                      </div>
+                      <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
+                        {currentMonthTitle} 누적 <span className="text-emerald-400 font-black">{totalWorkoutMinutes.toFixed(1)}분</span>
+                        <span className="text-base sm:text-lg font-bold text-slate-300 ml-2">
+                          ({Math.floor(totalWorkoutMinutes / 60)}시간 {Math.round(totalWorkoutMinutes % 60)}분 트레이닝)
+                        </span>
+                      </h2>
+                      <p className="text-sm sm:text-base text-slate-200 max-w-2xl leading-relaxed font-medium">
+                        실외/실내 사이클, 달리기, 수영, 골프, 등산, 웨이트 등 총 <strong className="text-white font-extrabold">{totalWorkoutSessions}회</strong>의 다양한 유산소 및 근력 운동을 완료하였으며, 총 <strong className="text-white font-extrabold">{totalDistanceKm.toFixed(2)}km</strong> 주행/이동 및 <strong className="text-amber-300 font-extrabold">{totalCaloriesBurned.toLocaleString()} kcal</strong>의 소모량을 기록했습니다.
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3.5 w-full md:w-auto shrink-0">
+                      <div className="bg-white/15 backdrop-blur rounded-2xl p-4 border border-white/20 text-center">
+                        <span className="text-xs font-bold text-slate-200 block mb-1">총 완수 세션</span>
+                        <span className="text-xl sm:text-2xl font-black text-emerald-300 font-mono">
+                          {totalWorkoutSessions} 회
+                        </span>
+                        <span className="text-xs font-bold text-slate-300 block mt-1">{currentMonthTitle} 기록</span>
+                      </div>
+                      <div className="bg-white/15 backdrop-blur rounded-2xl p-4 border border-white/20 text-center">
+                        <span className="text-xs font-bold text-slate-200 block mb-1">총 기록 칼로리</span>
+                        <span className="text-xl sm:text-2xl font-black text-amber-300 font-mono">
+                          {totalCaloriesBurned.toLocaleString()} kcal
+                        </span>
+                        <span className="text-xs font-bold text-slate-300 block mt-1">측정 세션 기준</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Core 4 KPI Summary Cards */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-5">
+                  <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm hover:border-emerald-400 transition-colors">
+                    <div className="flex items-center justify-between text-slate-600 mb-2">
+                      <span className="text-sm font-black text-slate-700">누적 운동 시간</span>
+                      <Timer className="w-5 h-5 text-emerald-600 stroke-[2.5]" />
+                    </div>
+                    <div className="text-2xl sm:text-3xl font-black text-slate-950 font-mono tracking-tight">
+                      {totalWorkoutMinutes.toFixed(1)} <span className="text-sm sm:text-base font-bold text-slate-600">분</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-xs font-extrabold text-emerald-800 mt-2.5 bg-emerald-50 px-2.5 py-1 rounded-lg w-fit">
+                      <Clock className="w-3.5 h-3.5 stroke-[2.5]" />
+                      <span>약 {(totalWorkoutMinutes / 60).toFixed(1)} 시간</span>
+                    </div>
+                  </div>
+
+                  <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm hover:border-blue-400 transition-colors">
+                    <div className="flex items-center justify-between text-slate-600 mb-2">
+                      <span className="text-sm font-black text-slate-700">총 완수 세션</span>
+                      <Activity className="w-5 h-5 text-blue-600 stroke-[2.5]" />
+                    </div>
+                    <div className="text-2xl sm:text-3xl font-black text-slate-950 font-mono tracking-tight">
+                      {totalWorkoutSessions} <span className="text-sm sm:text-base font-bold text-slate-600">회</span>
+                    </div>
+                    <div className="text-xs text-blue-800 font-extrabold mt-2.5 bg-blue-50 px-2.5 py-1 rounded-lg w-fit">
+                      총 {activityStats.length}개 종목 수행
+                    </div>
+                  </div>
+
+                  <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm hover:border-orange-400 transition-colors">
+                    <div className="flex items-center justify-between text-slate-600 mb-2">
+                      <span className="text-sm font-black text-slate-700">유산소 이동 거리</span>
+                      <TrendingUp className="w-5 h-5 text-orange-500 stroke-[2.5]" />
+                    </div>
+                    <div className="text-2xl sm:text-3xl font-black text-slate-950 font-mono tracking-tight">
+                      {totalDistanceKm.toFixed(2)} <span className="text-sm sm:text-base font-bold text-slate-600">km</span>
+                    </div>
+                    <div className="text-xs text-orange-800 font-extrabold mt-2.5 bg-orange-50 px-2.5 py-1 rounded-lg w-fit">
+                      사이클·달리기·걷기·수영
+                    </div>
+                  </div>
+
+                  <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm hover:border-purple-400 transition-colors">
+                    <div className="flex items-center justify-between text-slate-600 mb-2">
+                      <span className="text-sm font-black text-slate-700">기록 소모 칼로리</span>
+                      <Flame className="w-5 h-5 text-purple-600 stroke-[2.5]" />
+                    </div>
+                    <div className="text-2xl sm:text-3xl font-black text-slate-950 font-mono tracking-tight">
+                      {totalCaloriesBurned.toLocaleString()} <span className="text-sm sm:text-base font-bold text-slate-600">kcal</span>
+                    </div>
+                    <div className="text-xs text-purple-800 font-extrabold mt-2.5 bg-purple-50 px-2.5 py-1 rounded-lg w-fit">
+                      골프·사이클·근력 등
+                    </div>
+                  </div>
+                </div>
+
+                {/* Triathlon Mid-Term Readiness Summary Banner */}
+                <div className="bg-gradient-to-r from-rose-900 via-slate-900 to-teal-950 rounded-2xl p-5 sm:p-6 text-white shadow-md border border-rose-900/40">
+                  <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-5">
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <span className="px-2.5 py-0.5 rounded-full bg-rose-500/30 text-rose-200 text-xs font-black border border-rose-400/40">
+                          철인3종 중기 목표 코칭 요약
+                        </span>
+                        <span className="text-xs font-bold text-slate-300">
+                          스프린트 코스 (수영 750m · 사이클 20km · 런 5km)
+                        </span>
+                      </div>
+                      <h3 className="text-lg sm:text-xl font-black text-white">
+                        현재 철인 3종 목표 종합 준비도: <span className="text-rose-400 font-mono font-black">{triathlonAnalysis.overallReadiness}%</span>
+                      </h3>
+                      <div className="grid grid-cols-3 gap-3 pt-1">
+                        <div className="bg-white/10 rounded-xl p-2.5 text-center">
+                          <span className="text-xs text-cyan-300 font-bold block">🏊 수영 (750m)</span>
+                          <span className="text-base font-mono font-black text-white">{triathlonAnalysis.maxSwimDistanceM}m</span>
+                          <span className="text-[11px] text-slate-300 block font-bold">{triathlonAnalysis.swimProgress}% 달성</span>
+                        </div>
+                        <div className="bg-white/10 rounded-xl p-2.5 text-center">
+                          <span className="text-xs text-emerald-300 font-bold block">🚴 사이클 (20km)</span>
+                          <span className="text-base font-mono font-black text-white">{triathlonAnalysis.maxCycleDistanceKm.toFixed(1)}km</span>
+                          <span className="text-[11px] text-slate-300 block font-bold">{triathlonAnalysis.cycleProgress}% 달성</span>
+                        </div>
+                        <div className="bg-white/10 rounded-xl p-2.5 text-center">
+                          <span className="text-xs text-orange-300 font-bold block">🏃 달리기 (5km)</span>
+                          <span className="text-base font-mono font-black text-white">{triathlonAnalysis.maxRunDistanceKm.toFixed(1)}km</span>
+                          <span className="text-[11px] text-slate-300 block font-bold">{triathlonAnalysis.runProgress}% 달성</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={() => setActiveTab('triathlon')}
+                      className="px-4.5 py-3 rounded-xl bg-white text-slate-950 font-black hover:bg-rose-50 transition-all flex items-center gap-2 shrink-0 cursor-pointer shadow-sm text-sm"
+                    >
+                      <Target className="w-4.5 h-4.5 text-rose-600 stroke-[2.5]" />
+                      <span>철인3종 가이드 & 코칭 상세 플랜 보기</span>
+                      <ChevronRight className="w-4 h-4 stroke-[2.5]" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Daily Volume Bar Chart */}
+                <div className="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200 shadow-sm">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center font-black">
+                        <BarChart3 className="w-5 h-5 stroke-[2.5]" />
+                      </div>
+                      <div>
+                        <h3 className="text-base sm:text-lg font-black text-slate-950">{currentMonthTitle} 일자별 운동 시간(분) 볼륨 추이</h3>
+                        <p className="text-xs sm:text-sm font-bold text-slate-500">날짜별 트레이닝 수행량 및 세션 집중도 시각화</p>
+                      </div>
+                    </div>
+                    <span className="text-xs sm:text-sm font-black text-emerald-800 bg-emerald-50 px-3 py-1.5 rounded-full border border-emerald-300 font-mono">
+                      {dateRangeLabel}
+                    </span>
+                  </div>
+                  <div className="pt-2">
+                    <D3DailyVolumeChart workouts={monthFilteredWorkouts} height={230} />
+                  </div>
+                </div>
+
+                {/* Workout Highlights & Record Improvements Callouts */}
+                <div className="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200 shadow-sm">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-9 h-9 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center font-black">
+                        <Trophy className="w-5 h-5 stroke-[2.5]" />
+                      </div>
+                      <div>
+                        <h3 className="text-base sm:text-lg font-black text-slate-950">{currentMonthTitle} 주요 종목별 기록 향상 & 성과 하이라이트</h3>
+                        <p className="text-xs sm:text-sm font-bold text-slate-500">사이클 최고 속도, 수영 페이스 단축, 러닝 지구력, 등산 등 실제 데이터 기반 분석</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setActiveTab('analytics')}
+                      className="text-xs sm:text-sm font-black text-emerald-700 hover:text-emerald-900 flex items-center gap-1 cursor-pointer"
+                    >
+                      종목별 상세 분석 <ChevronRight className="w-4 h-4 stroke-[2.5]" />
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {improvementHighlights.map((h, i) => (
+                      <div key={i} className="p-4 rounded-xl bg-slate-50 border border-slate-200 flex items-start gap-3.5 hover:bg-slate-100 transition-colors">
+                        <span className="text-3xl shrink-0 p-2.5 bg-white rounded-xl shadow-xs border border-slate-200">{h.icon}</span>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center justify-between gap-2 mb-1.5">
+                            <h4 className="text-sm sm:text-base font-black text-slate-950 truncate">{h.title}</h4>
+                            <span className="text-xs font-black px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-900 border border-emerald-200 shrink-0">
+                              {h.tag}
+                            </span>
+                          </div>
+                          <p className="text-xs sm:text-sm font-semibold text-slate-700 leading-relaxed">{h.desc}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* TAB 2: 철인3종 가이드 & 코칭 (TRIATHLON GUIDE & COACHING) */}
+            {activeTab === 'triathlon' && (
+              <div className="space-y-6">
+                <div className="bg-gradient-to-r from-slate-950 via-slate-900 to-rose-950 rounded-2xl p-6 sm:p-7 text-white shadow-lg">
+                  <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-5">
+                    <div>
+                      <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-rose-500/25 text-rose-300 text-sm font-black mb-2.5 border border-rose-400/40">
+                        <Target className="w-4 h-4 stroke-[2.5]" /> 철인3종(Triathlon) 중기 목표 달성 가이드 & 1:1 맞춤 코칭
+                      </div>
+                      <h2 className="text-2xl sm:text-3xl font-black tracking-tight">
+                        {triathlonAnalysis.targets.title}
+                      </h2>
+                      <p className="text-sm sm:text-base font-semibold text-slate-200 mt-1.5 max-w-2xl leading-relaxed">
+                        {triathlonAnalysis.targets.subtitle}. 실제 기록된 수영, 사이클, 달리기 데이터를 기반으로 현재 준비도와 향후 중기 목표 완주를 위한 단계별 실전 훈련 지침을 제공합니다.
+                      </p>
+                    </div>
+
+                    <div className="flex flex-col items-start sm:items-end gap-2 shrink-0">
+                      <span className="text-xs font-bold text-slate-300">목표 코스 선택:</span>
+                      <div className="p-1 rounded-xl bg-white/15 border border-white/20 inline-flex">
+                        <button
+                          onClick={() => setTriathlonGoal('sprint')}
+                          className={`px-3.5 py-1.5 text-xs sm:text-sm rounded-lg font-black transition-all cursor-pointer ${
+                            triathlonGoal === 'sprint'
+                              ? 'bg-rose-600 text-white shadow-sm'
+                              : 'text-slate-300 hover:text-white'
+                          }`}
+                        >
+                          스프린트 코스 (중기 1차)
+                        </button>
+                        <button
+                          onClick={() => setTriathlonGoal('olympic')}
+                          className={`px-3.5 py-1.5 text-xs sm:text-sm rounded-lg font-black transition-all cursor-pointer ${
+                            triathlonGoal === 'olympic'
+                              ? 'bg-rose-600 text-white shadow-sm'
+                              : 'text-slate-300 hover:text-white'
+                          }`}
+                        >
+                          올림픽 코스 (2차 목표)
+                        </button>
+                      </div>
+                      <div className="text-xs font-mono font-bold text-rose-300">
+                        종합 준비도: {triathlonAnalysis.overallReadiness}%
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                  {/* 1. 수영 (SWIM) */}
+                  <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm flex flex-col justify-between">
+                    <div>
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                          <span className="text-2xl p-1.5 rounded-xl bg-cyan-50 border border-cyan-200">🏊</span>
+                          <div>
+                            <h3 className="text-base font-black text-slate-950">1종목: 수영 (Swim)</h3>
+                            <span className="text-xs font-bold text-slate-500">목표: {triathlonAnalysis.targets.swimDistM}m 완영</span>
+                          </div>
+                        </div>
+                        <span className="text-xs font-black px-2.5 py-1 rounded-full bg-cyan-100 text-cyan-900 border border-cyan-300">
+                          {triathlonAnalysis.swimProgress}% 달성
+                        </span>
+                      </div>
+
+                      <div className="w-full bg-slate-100 h-3 rounded-full overflow-hidden mb-3.5">
+                        <div
+                          className="bg-cyan-500 h-full rounded-full transition-all duration-500"
+                          style={{ width: `${triathlonAnalysis.swimProgress}%` }}
+                        />
+                      </div>
+
+                      <div className="space-y-2 text-xs sm:text-sm border-t border-slate-100 pt-3">
+                        <div className="flex justify-between text-slate-700">
+                          <span>최장 연속 완영 기록:</span>
+                          <strong className="text-slate-950 font-mono font-black">{triathlonAnalysis.maxSwimDistanceM} m</strong>
+                        </div>
+                        <div className="flex justify-between text-slate-700">
+                          <span>최고 기록 페이스:</span>
+                          <strong className="text-cyan-800 font-mono font-black">{triathlonAnalysis.bestSwimPaceStr}</strong>
+                        </div>
+                        <div className="flex justify-between text-slate-700">
+                          <span>목표까지 잔여 거리:</span>
+                          <strong className="text-rose-700 font-mono font-black">
+                            {Math.max(0, triathlonAnalysis.targets.swimDistM - triathlonAnalysis.maxSwimDistanceM)} m
+                          </strong>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 p-3 bg-cyan-50/70 border border-cyan-200 rounded-xl text-xs font-semibold text-cyan-950 leading-relaxed">
+                      💡 <strong>수영 코칭 조언:</strong> 9월 12일 500m 지속 완영(3'01"/100m)에 성공하여 스프린트(750m) 기준 67%에 도달했습니다! 다리 발차기(킥)를 2비트 킥으로 최소화해 사이클용 허벅지 체력을 보존하고 250m 거리만 확장하세요.
+                    </div>
+                  </div>
+
+                  {/* 2. 사이클 (CYCLE) */}
+                  <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm flex flex-col justify-between">
+                    <div>
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                          <span className="text-2xl p-1.5 rounded-xl bg-emerald-50 border border-emerald-200">🚴</span>
+                          <div>
+                            <h3 className="text-base font-black text-slate-950">2종목: 사이클 (Bike)</h3>
+                            <span className="text-xs font-bold text-slate-500">목표: {triathlonAnalysis.targets.cycleDistKm} km</span>
+                          </div>
+                        </div>
+                        <span className="text-xs font-black px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-900 border border-emerald-300">
+                          {triathlonAnalysis.cycleProgress}% 달성
+                        </span>
+                      </div>
+
+                      <div className="w-full bg-slate-100 h-3 rounded-full overflow-hidden mb-3.5">
+                        <div
+                          className="bg-emerald-500 h-full rounded-full transition-all duration-500"
+                          style={{ width: `${triathlonAnalysis.cycleProgress}%` }}
+                        />
+                      </div>
+
+                      <div className="space-y-2 text-xs sm:text-sm border-t border-slate-100 pt-3">
+                        <div className="flex justify-between text-slate-700">
+                          <span>최장 야외 주행 거리:</span>
+                          <strong className="text-slate-950 font-mono font-black">{triathlonAnalysis.maxCycleDistanceKm.toFixed(2)} km</strong>
+                        </div>
+                        <div className="flex justify-between text-slate-700">
+                          <span>최고 기록 평속:</span>
+                          <strong className="text-emerald-800 font-mono font-black">{triathlonAnalysis.maxCycleSpeedKmH.toFixed(2)} km/h</strong>
+                        </div>
+                        <div className="flex justify-between text-slate-700">
+                          <span>목표까지 잔여 거리:</span>
+                          <strong className="text-emerald-900 font-mono font-black">
+                            {Math.max(0, triathlonAnalysis.targets.cycleDistKm - triathlonAnalysis.maxCycleDistanceKm).toFixed(2)} km (완주 임박)
+                          </strong>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 p-3 bg-emerald-50/70 border border-emerald-200 rounded-xl text-xs font-semibold text-emerald-950 leading-relaxed">
+                      💡 <strong>사이클 코칭 조언:</strong> 최장 단일 18.24km 주행에 이어, 최근 9월 19일 3구간 연속 주행(총 15.87km) 및 9월 21일 템포 라이딩(평속 16.88km/h)으로 주행 지구력이 탄탄해졌습니다! 스프린트(20km) 목표 대비 91% 체력을 이미 확보했습니다.
+                    </div>
+                  </div>
+
+                  {/* 3. 달리기 (RUN) */}
+                  <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm flex flex-col justify-between">
+                    <div>
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                          <span className="text-2xl p-1.5 rounded-xl bg-orange-50 border border-orange-200">🏃</span>
+                          <div>
+                            <h3 className="text-base font-black text-slate-950">3종목: 달리기 (Run)</h3>
+                            <span className="text-xs font-bold text-slate-500">목표: {triathlonAnalysis.targets.runDistKm} km</span>
+                          </div>
+                        </div>
+                        <span className="text-xs font-black px-2.5 py-1 rounded-full bg-orange-100 text-orange-900 border border-orange-300">
+                          {triathlonAnalysis.runProgress}% 달성
+                        </span>
+                      </div>
+
+                      <div className="w-full bg-slate-100 h-3 rounded-full overflow-hidden mb-3.5">
+                        <div
+                          className="bg-orange-500 h-full rounded-full transition-all duration-500"
+                          style={{ width: `${triathlonAnalysis.runProgress}%` }}
+                        />
+                      </div>
+
+                      <div className="space-y-2 text-xs sm:text-sm border-t border-slate-100 pt-3">
+                        <div className="flex justify-between text-slate-700">
+                          <span>최장 완주 거리:</span>
+                          <strong className="text-slate-950 font-mono font-black">{triathlonAnalysis.maxRunDistanceKm.toFixed(2)} km</strong>
+                        </div>
+                        <div className="flex justify-between text-slate-700">
+                          <span>최고 기록 페이스:</span>
+                          <strong className="text-orange-800 font-mono font-black">{triathlonAnalysis.bestRunPaceStr}</strong>
+                        </div>
+                        <div className="flex justify-between text-slate-700">
+                          <span>스프린트 완주 여부:</span>
+                          <strong className="text-emerald-700 font-mono font-black">목표 5.0km 돌파 완료 ✅</strong>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 p-3 bg-orange-50/70 border border-orange-200 rounded-xl text-xs font-semibold text-orange-950 leading-relaxed">
+                      💡 <strong>달리기 코칭 조언:</strong> 9월 18일 템포 러닝에서 <strong>최고 페이스 6'02"/km</strong>를 기록하며 6분대 초반에 완벽 진입했습니다! 5.67km 최장 완주 능력과 향상된 스피드를 결합해, 이제 사이클 직후 2~3km를 달리는 <strong>브릭(Brick) 전환 훈련</strong>에 집중하세요.
+                    </div>
+                  </div>
+                </div>
+
+                {/* 4-Stage Mid-Term Triathlon RoadMap */}
+                <div className="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200 shadow-sm">
+                  <div className="flex items-center gap-2.5 mb-4">
+                    <div className="w-9 h-9 rounded-xl bg-rose-100 text-rose-800 flex items-center justify-center font-black">
+                      <Flag className="w-5 h-5 stroke-[2.5]" />
+                    </div>
+                    <div>
+                      <h3 className="text-base sm:text-lg font-black text-slate-950">철인3종 중기 목표 달성을 위한 4단계 로드맵 (Roadmap)</h3>
+                      <p className="text-xs sm:text-sm font-bold text-slate-500">현재 체력 상태에서 실제 대회 완주까지 단계별 달성 전략</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs font-black px-2 py-0.5 rounded bg-emerald-200 text-emerald-900">1단계 (현재 완료 단계)</span>
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                      </div>
+                      <h4 className="text-sm font-black text-emerald-950 mb-1">단독 종목별 기초 거리 완성</h4>
+                      <p className="text-xs text-emerald-900/80 leading-relaxed">
+                        수영 500m 지속주 돌파, 야외 사이클 18km 주파, 런 5km 완주로 단독 체력 베이스 구축 완료.
+                      </p>
+                    </div>
+
+                    <div className="p-4 rounded-xl bg-amber-50 border border-amber-300 ring-2 ring-amber-400/40">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs font-black px-2 py-0.5 rounded bg-amber-200 text-amber-900">2단계 (현재 집중 과제)</span>
+                        <Sparkles className="w-4 h-4 text-amber-600" />
+                      </div>
+                      <h4 className="text-sm font-black text-amber-950 mb-1">브릭(Brick) 복합 전환 훈련</h4>
+                      <p className="text-xs text-amber-900/80 leading-relaxed">
+                        [사이클 15km 주행 후 10분 내 런 2km 지속주] 실시. 하체 근육의 빠른 전환 적응력 훈련.
+                      </p>
+                    </div>
+
+                    <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs font-black px-2 py-0.5 rounded bg-slate-200 text-slate-800">3단계 (목표 1개월 전)</span>
+                        <Timer className="w-4 h-4 text-slate-500" />
+                      </div>
+                      <h4 className="text-sm font-black text-slate-950 mb-1">오픈워터 적응 & 페이스주</h4>
+                      <p className="text-xs text-slate-700 leading-relaxed">
+                        수영 750m 연속 완영 안착, 슈트 착용 훈련, 사이클 평속 20km/h 페이스 제어 및 에너지젤 섭취 루틴화.
+                      </p>
+                    </div>
+
+                    <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs font-black px-2 py-0.5 rounded bg-slate-200 text-slate-800">4단계 (목표 2주 전)</span>
+                        <Trophy className="w-4 h-4 text-slate-500" />
+                      </div>
+                      <h4 className="text-sm font-black text-slate-950 mb-1">모의 테스트 & 테이퍼링</h4>
+                      <p className="text-xs text-slate-700 leading-relaxed">
+                        실전 70% 거리 모의 연습 실시. 경기 1주일 전 훈련 볼륨 40% 감축(테이퍼링)하여 최상의 컨디션으로 완주.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Recommended Weekly Practice Training Plan */}
+                <div className="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200 shadow-sm">
+                  <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-9 h-9 rounded-xl bg-blue-100 text-blue-800 flex items-center justify-center font-black">
+                        <Calendar className="w-5 h-5 stroke-[2.5]" />
+                      </div>
+                      <div>
+                        <h3 className="text-base sm:text-lg font-black text-slate-950">철인3종 중기 목표 달성을 위한 주간 추천 훈련 플래너</h3>
+                        <p className="text-xs sm:text-sm font-bold text-slate-500">부상을 방지하고 종목별 밸런스를 잡는 7일 주기 루틴</p>
+                      </div>
+                    </div>
+                    <span className="text-xs font-black px-3 py-1 rounded-full bg-blue-50 text-blue-800 border border-blue-200">
+                      주당 총 운동 시간 목표: 약 4~5시간
+                    </span>
+                  </div>
+
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-sm border-collapse">
+                      <thead>
+                        <tr className="bg-slate-100 text-slate-800 border-b border-slate-200">
+                          <th className="py-3 px-4 font-black w-24">요일</th>
+                          <th className="py-3 px-4 font-black w-36">종목</th>
+                          <th className="py-3 px-4 font-black">추천 훈련 메뉴 & 세부 목표</th>
+                          <th className="py-3 px-4 font-black w-48">핵심 코칭 포인트</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 font-medium text-slate-800">
+                        <tr className="hover:bg-slate-50">
+                          <td className="py-3.5 px-4 font-black text-slate-950">월요일</td>
+                          <td className="py-3.5 px-4">
+                            <span className="px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-100 text-slate-700">🧘 능동적 회복</span>
+                          </td>
+                          <td className="py-3.5 px-4">가벼운 산책 20~30분, 폼롤러 전신 스트레칭, 수면 보충</td>
+                          <td className="py-3.5 px-4 text-xs font-bold text-slate-600">주말 피로 완벽 해소</td>
+                        </tr>
+                        <tr className="hover:bg-slate-50">
+                          <td className="py-3.5 px-4 font-black text-slate-950">화요일</td>
+                          <td className="py-3.5 px-4">
+                            <span className="px-2.5 py-1 rounded-lg text-xs font-bold bg-cyan-100 text-cyan-800">🏊 수영 기술일</span>
+                          </td>
+                          <td className="py-3.5 px-4">워밍업 100m + [100m x 5회 인터벌, 휴식 30초] + 쿨다운 100m</td>
+                          <td className="py-3.5 px-4 text-xs font-bold text-cyan-800">글라이딩 & 호흡 안정화</td>
+                        </tr>
+                        <tr className="hover:bg-slate-50">
+                          <td className="py-3.5 px-4 font-black text-slate-950">수요일</td>
+                          <td className="py-3.5 px-4">
+                            <span className="px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-100 text-emerald-800">🚴 사이클 파워</span>
+                          </td>
+                          <td className="py-3.5 px-4">실내/실외 사이클 30분 지속주 (케이던스 85~90 RPM 유지)</td>
+                          <td className="py-3.5 px-4 text-xs font-bold text-emerald-800">무거운 기어 금지, 회전력</td>
+                        </tr>
+                        <tr className="hover:bg-slate-50">
+                          <td className="py-3.5 px-4 font-black text-slate-950">목요일</td>
+                          <td className="py-3.5 px-4">
+                            <span className="px-2.5 py-1 rounded-lg text-xs font-bold bg-orange-100 text-orange-800">🏃 러닝 페이스주</span>
+                          </td>
+                          <td className="py-3.5 px-4">실외 달리기 3.0 ~ 4.0 km (목표 페이스 7'15"~7'30" 일정하게 유지)</td>
+                          <td className="py-3.5 px-4 text-xs font-bold text-orange-800">심박수 140bpm 이하 유지</td>
+                        </tr>
+                        <tr className="hover:bg-slate-50">
+                          <td className="py-3.5 px-4 font-black text-slate-950">금요일</td>
+                          <td className="py-3.5 px-4">
+                            <span className="px-2.5 py-1 rounded-lg text-xs font-bold bg-purple-100 text-purple-800">🏋️ 코어 보강</span>
+                          </td>
+                          <td className="py-3.5 px-4">플랭크 1분 x 3세트, 스쿼트 20회 x 3세트, 둔근 밴드 운동 (15분)</td>
+                          <td className="py-3.5 px-4 text-xs font-bold text-purple-800">허리 요통 및 무릎 부상 방지</td>
+                        </tr>
+                        <tr className="hover:bg-slate-50 bg-amber-50/40">
+                          <td className="py-3.5 px-4 font-black text-slate-950">토요일</td>
+                          <td className="py-3.5 px-4">
+                            <span className="px-2.5 py-1 rounded-lg text-xs font-bold bg-amber-100 text-amber-900 border border-amber-300">
+                              🔥 브릭(Brick) 훈련
+                            </span>
+                          </td>
+                          <td className="py-3.5 px-4 font-bold text-slate-950">
+                            [야외 사이클 15~18 km 주행] 직후 5분 이내 신발 갈아신고 [조깅 1.5 ~ 2.0 km]
+                          </td>
+                          <td className="py-3.5 px-4 text-xs font-black text-amber-900">대회 실전 전환 적응 필수</td>
+                        </tr>
+                        <tr className="hover:bg-slate-50">
+                          <td className="py-3.5 px-4 font-black text-slate-950">일요일</td>
+                          <td className="py-3.5 px-4">
+                            <span className="px-2.5 py-1 rounded-lg text-xs font-bold bg-cyan-100 text-cyan-800">🏊 장거리 수영</span>
+                          </td>
+                          <td className="py-3.5 px-4">수영 600m ~ 750m 논스톱 완영 시도 (천천히 멈추지 않고 완영)</td>
+                          <td className="py-3.5 px-4 text-xs font-bold text-cyan-800">멘탈 및 완영 자신감 획득</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Crucial Transition (T1, T2) & Nutrition Advice */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                  <div className="p-4.5 rounded-2xl bg-white border border-slate-200 shadow-sm">
+                    <div className="flex items-center gap-2 mb-2.5">
+                      <span className="p-1 rounded-lg bg-indigo-50 text-indigo-700 text-lg">⏱️</span>
+                      <h4 className="text-sm font-black text-slate-950">T1 전환 구역 (수영 ➡️ 사이클)</h4>
+                    </div>
+                    <ul className="text-xs text-slate-700 space-y-1.5 list-disc pl-4 font-medium leading-relaxed">
+                      <li>물 밖으로 나오면서 수경과 모자를 벗고 슈트 지퍼를 미리 내립니다.</li>
+                      <li><strong>철인 규정:</strong> 자전거를 거치대에서 내리기 전에 <strong>헬멧 턱끈을 먼저 잠가야</strong> 실격되지 않습니다.</li>
+                      <li>양말과 사이클 슈즈를 신속히 신고 바코드 라인을 통과한 뒤 탑승합니다.</li>
+                    </ul>
+                  </div>
+
+                  <div className="p-4.5 rounded-2xl bg-white border border-slate-200 shadow-sm">
+                    <div className="flex items-center gap-2 mb-2.5">
+                      <span className="p-1 rounded-lg bg-amber-50 text-amber-700 text-lg">👟</span>
+                      <h4 className="text-sm font-black text-slate-950">T2 전환 구역 (사이클 ➡️ 런)</h4>
+                    </div>
+                    <ul className="text-xs text-slate-700 space-y-1.5 list-disc pl-4 font-medium leading-relaxed">
+                      <li>자전거를 지정 거치대에 완전히 거치한 후 헬멧을 벗습니다.</li>
+                      <li>러닝화는 묶을 필요가 없는 <strong>탄력 고무끈(퀵 레이스)</strong>을 사용하면 시간을 대폭 단축할 수 있습니다.</li>
+                      <li>출발 직후 다리가 굳어 있으므로 <strong>첫 1km는 페이스를 30초 늦추고</strong> 피치(발 회전) 위주로 달립니다.</li>
+                    </ul>
+                  </div>
+
+                  <div className="p-4.5 rounded-2xl bg-white border border-slate-200 shadow-sm">
+                    <div className="flex items-center gap-2 mb-2.5">
+                      <span className="p-1 rounded-lg bg-rose-50 text-rose-700 text-lg">⚡</span>
+                      <h4 className="text-sm font-black text-slate-950">영양 섭취 & 수분 보충 전략</h4>
+                    </div>
+                    <ul className="text-xs text-slate-700 space-y-1.5 list-disc pl-4 font-medium leading-relaxed">
+                      <li>수영 중에는 마실 수 없으므로 사이클 시작 10분 후부터 <strong>15분마다 이온음료 한 모금씩</strong> 마십니다.</li>
+                      <li>사이클 종료 10분 전 에너지젤 1포를 섭취해두면 달리기 5km 내내 혈당이 유지됩니다.</li>
+                      <li>갈증을 느끼기 전에 마시는 것이 탈수와 다리 경련 방지의 핵심입니다.</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* TAB 3: 종목별 향상 분석 */}
+            {activeTab === 'analytics' && (
+              <div className="space-y-6">
+                <div className="bg-gradient-to-r from-slate-950 via-indigo-950 to-emerald-950 rounded-2xl p-6 sm:p-7 text-white shadow-lg">
+                  <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-5">
+                    <div>
+                      <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-500/25 text-emerald-300 text-sm font-black mb-2.5 border border-emerald-400/40">
+                        <Trophy className="w-4 h-4 stroke-[2.5]" /> {currentMonthTitle} 운동 종목별 누적 데이터 & 최고 기록 향상 트래커
+                      </div>
+                      <h2 className="text-2xl sm:text-3xl font-black tracking-tight">
+                        총 <span className="text-emerald-400 font-black">{totalWorkoutSessions}회</span> 세션 · 누적 <span className="text-amber-300 font-black">{totalWorkoutMinutes.toFixed(1)}분</span> 완주
+                      </h2>
+                      <p className="text-sm sm:text-base font-semibold text-slate-200 mt-1.5 max-w-2xl leading-relaxed">
+                        각 종목별 누적 운동 시간, 이동 거리, 소모 칼로리와 함께 회차별 페이스 및 속도 기록의 개선 추세를 시각화하여 확인합니다.
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-3.5">
+                      <div className="bg-white/15 backdrop-blur rounded-2xl p-4 border border-white/20 text-center min-w-[120px]">
+                        <span className="text-xs font-bold text-slate-300 block mb-1">총 이동 거리</span>
+                        <span className="text-lg sm:text-xl font-black text-emerald-300 font-mono">{totalDistanceKm.toFixed(2)} km</span>
+                      </div>
+                      <div className="bg-white/15 backdrop-blur rounded-2xl p-4 border border-white/20 text-center min-w-[120px]">
+                        <span className="text-xs font-bold text-slate-300 block mb-1">총 기록 칼로리</span>
+                        <span className="text-lg sm:text-xl font-black text-amber-300 font-mono">{totalCaloriesBurned.toLocaleString()} kcal</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 p-2 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-x-auto no-scrollbar">
+                  <span className="text-sm font-black text-slate-700 px-2.5 flex items-center gap-1.5 shrink-0">
+                    <Filter className="w-4 h-4 stroke-[2.5]" /> 종목 필터:
+                  </span>
+                  {uniqueActivities.map((act) => {
+                    const isSelected = selectedSportFilter === act;
+                    const meta = getActivityMeta(act);
+                    const stat = activityStats.find(s => s.activity === act);
+
+                    return (
+                      <button
+                        key={act}
+                        onClick={() => setSelectedSportFilter(act)}
+                        className={`flex items-center gap-2 px-3.5 py-2 text-sm font-bold rounded-xl transition-all cursor-pointer whitespace-nowrap ${
+                          isSelected
+                            ? 'bg-slate-950 text-white shadow-md font-black'
+                            : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                        }`}
+                      >
+                        <span className="text-base">{act === '전체' ? '🌐' : meta.icon}</span>
+                        <span>{act}</span>
+                        {stat && (
+                          <span className={`text-xs px-2 py-0.5 rounded-full font-mono font-black ${
+                            isSelected ? 'bg-white/25 text-white' : 'bg-slate-200 text-slate-800'
+                          }`}>
+                            {stat.count}회
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <div className="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200 shadow-sm flex flex-col justify-between">
+                    <div>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <h3 className="text-base sm:text-lg font-black text-slate-950 flex items-center gap-2">
+                          <BarChart3 className="w-5 h-5 text-emerald-600 stroke-[2.5]" />
+                          종목별 누적 운동 시간 (분) 비교 차트
+                        </h3>
+                        <span className="text-xs font-bold text-slate-500">바 클릭 시 종목 선택</span>
+                      </div>
+                      <p className="text-xs sm:text-sm font-bold text-slate-500 mb-4">각 운동 종목에 투자한 누적 총 시간(분) 및 수행 횟수</p>
+                    </div>
+
+                    <D3WorkoutBarChart
+                      activityStats={activityStats}
+                      selectedActivity={selectedSportFilter}
+                      onSelectActivity={(act) => setSelectedSportFilter(act)}
+                      height={280}
+                    />
+                  </div>
+
+                  <div className="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200 shadow-sm flex flex-col justify-between">
+                    <div>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <h3 className="text-base sm:text-lg font-black text-slate-950 flex items-center gap-2">
+                          <TrendingUp className="w-5 h-5 text-emerald-600 stroke-[2.5]" />
+                          {selectedSportFilter === '전체' ? '전체 세션별 운동 시간 추이' : `${selectedSportFilter} 회차별 기록 향상 추이`}
+                        </h3>
+                        <span className="text-xs font-black px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-300">
+                          기록 개선 곡선
+                        </span>
+                      </div>
+                      <p className="text-xs sm:text-sm font-bold text-slate-500 mb-4">
+                        {selectedSportFilter.includes('사이클') ? '주행 회차별 속도(km/h) 및 지속시간 향상 추세' :
+                         selectedSportFilter.includes('달리기') || selectedSportFilter.includes('러닝') ? '회차별 완주 거리(km) 및 페이스 향상' :
+                         selectedSportFilter.includes('수영') ? '회차별 수영 거리 및 100m당 페이스 단축' :
+                         selectedSportFilter.includes('골프') ? '타수 및 소모 칼로리 추이' :
+                         '회차별 운동 지속 시간(분) 추이'}
+                      </p>
+                    </div>
+
+                    <D3ActivityProgressChart
+                      records={monthFilteredWorkouts}
+                      activityName={selectedSportFilter}
+                      height={280}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="text-base sm:text-lg font-black text-slate-950 mb-3.5 flex items-center gap-2">
+                    <Dumbbell className="w-5 h-5 text-emerald-600 stroke-[2.5]" />
+                    종목별 누적 수행 통계 및 최고 기록 카드
+                  </h3>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    {activityStats.map((stat) => {
+                      const meta = getActivityMeta(stat.activity);
+                      const isSelected = selectedSportFilter === stat.activity;
+
+                      return (
+                        <div
+                          key={stat.activity}
+                          onClick={() => setSelectedSportFilter(isSelected ? '전체' : stat.activity)}
+                          className={`bg-white rounded-2xl p-4.5 border transition-all cursor-pointer ${
+                            isSelected
+                              ? 'border-emerald-500 ring-2 ring-emerald-500/25 shadow-md'
+                              : 'border-slate-200 hover:border-slate-300 shadow-sm'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between mb-3.5">
+                            <div className="flex items-center gap-2.5">
+                              <span className="text-3xl p-1 bg-slate-50 rounded-xl">{meta.icon}</span>
+                              <div>
+                                <h4 className="text-sm font-black text-slate-950">{stat.activity}</h4>
+                                <span className="text-xs font-bold text-slate-500">{stat.count}회 세션 수행</span>
+                              </div>
+                            </div>
+                            <span className={`text-xs font-black px-2.5 py-1 rounded-full border ${meta.bg}`}>
+                              {stat.totalDuration.toFixed(1)}분
+                            </span>
+                          </div>
+
+                          <div className="space-y-2 text-sm pt-2.5 border-t border-slate-100">
+                            {stat.totalDistanceKm > 0 && (
+                              <div className="flex justify-between text-slate-700 font-semibold">
+                                <span>누적 거리</span>
+                                <span className="font-black text-slate-950 font-mono">{stat.totalDistanceKm.toFixed(2)} km</span>
+                              </div>
+                            )}
+                            {stat.maxSpeed && (
+                              <div className="flex justify-between text-emerald-800 font-bold">
+                                <span>최고 속도</span>
+                                <span className="font-mono font-black">{stat.maxSpeed.toFixed(2)} km/h</span>
+                              </div>
+                            )}
+                            {stat.bestPaceStr && (
+                              <div className="flex justify-between text-sky-800 font-bold">
+                                <span>최고 페이스</span>
+                                <span className="font-mono font-black">{stat.bestPaceStr}</span>
+                              </div>
+                            )}
+                            {stat.totalCalories > 0 && (
+                              <div className="flex justify-between text-slate-700 font-semibold">
+                                <span>누적 칼로리</span>
+                                <span className="font-black text-amber-700 font-mono">{stat.totalCalories.toLocaleString()} kcal</span>
+                              </div>
+                            )}
+                            {stat.avgHeartRate && (
+                              <div className="flex justify-between text-slate-700 font-semibold">
+                                <span>평균 심박수</span>
+                                <span className="font-mono font-bold text-slate-800">{stat.avgHeartRate} bpm</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* TAB 4: 운동 기록 관리 대장 (CRUD TABLE) */}
+            {activeTab === 'logs' && (
+              <div className="space-y-4">
+                <div className="bg-white rounded-2xl p-4.5 border border-slate-200 shadow-sm flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3.5">
+                  <div className="relative flex-1 max-w-md">
+                    <Search className="w-4.5 h-4.5 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2 stroke-[2.5]" />
+                    <input
+                      type="text"
+                      placeholder="날짜, 운동 종목, 거리, 속도, 메모 내용 검색..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="w-full pl-10 pr-4 py-2.5 text-sm font-semibold text-slate-900 bg-slate-50 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all placeholder:text-slate-500 placeholder:font-medium"
+                    />
+                    {searchQuery && (
+                      <button
+                        onClick={() => setSearchQuery('')}
+                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-800 cursor-pointer"
+                      >
+                        <X className="w-4 h-4 stroke-[2.5]" />
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-2.5">
+                    <button
+                      onClick={() => setSortOrder(prev => prev === 'desc' ? 'asc' : 'desc')}
+                      className="flex items-center gap-2 px-4 py-2.5 text-sm font-bold text-slate-800 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors cursor-pointer border border-slate-200"
+                    >
+                      <SlidersHorizontal className="w-4 h-4 stroke-[2.5]" />
+                      <span>{sortOrder === 'desc' ? '최신순 정렬' : '과거순 정렬'}</span>
+                    </button>
+
+                    <button
+                      onClick={handleOpenAddWorkoutModal}
+                      className="flex items-center gap-2 px-4.5 py-2.5 text-sm font-black text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-sm transition-colors cursor-pointer"
+                    >
+                      <Plus className="w-4 h-4 stroke-[2.5]" />
+                      <span>새 운동 추가</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-sm border-collapse">
+                      <thead>
+                        <tr className="bg-slate-100/90 border-b border-slate-200 text-slate-800">
+                          <th className="py-3.5 px-4 font-black">날짜</th>
+                          <th className="py-3.5 px-3.5 font-black">시간</th>
+                          <th className="py-3.5 px-4 font-black">운동 종목</th>
+                          <th className="py-3.5 px-3.5 font-black">운동 시간(분)</th>
+                          <th className="py-3.5 px-3.5 font-black">소모 칼로리</th>
+                          <th className="py-3.5 px-3.5 font-black">거리 / 세트 / 횟수</th>
+                          <th className="py-3.5 px-3.5 font-black">속도 / 페이스</th>
+                          <th className="py-3.5 px-3.5 font-black">평균 심박수</th>
+                          <th className="py-3.5 px-4 font-black min-w-[130px]">메모</th>
+                          <th className="py-3.5 px-4 font-black text-center w-28">작업</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {displayWorkouts.length === 0 ? (
+                          <tr>
+                            <td colSpan={10} className="py-12 text-center text-slate-500">
+                              <Dumbbell className="w-9 h-9 mx-auto mb-2 opacity-40 text-slate-400" />
+                              <p className="text-base font-bold">검색 조건에 일치하는 운동 기록이 없습니다.</p>
+                            </td>
+                          </tr>
+                        ) : (
+                          displayWorkouts.map((w) => {
+                            const meta = getActivityMeta(w.activity);
+                            return (
+                              <tr key={w.index_} className="hover:bg-slate-50/90 transition-colors group font-semibold text-slate-800">
+                                <td className="py-3.5 px-4 font-bold text-slate-950 font-mono whitespace-nowrap">
+                                  <div className="flex items-center gap-1.5">
+                                    <span>{w.date}</span>
+                                    {w.date === latestDateStr && (
+                                      <span className="px-1.5 py-0.5 rounded text-[10px] font-black bg-emerald-100 text-emerald-900 border border-emerald-300">
+                                        최신
+                                      </span>
+                                    )}
+                                  </div>
+                                </td>
+                                <td className="py-3.5 px-3.5 text-slate-600 font-mono whitespace-nowrap font-bold">
+                                  {w.time ? w.time.slice(0, 5) : '-'}
+                                </td>
+                                <td className="py-3.5 px-4 whitespace-nowrap">
+                                  <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-black border ${meta.bg}`}>
+                                    <span>{meta.icon}</span>
+                                    <span>{w.activity}</span>
+                                  </span>
+                                </td>
+                                <td className="py-3.5 px-3.5 font-black text-slate-950 font-mono text-sm">
+                                  {w.duration !== null ? `${w.duration.toFixed(1)} 분` : '-'}
+                                </td>
+                                <td className="py-3.5 px-3.5 font-mono">
+                                  {w.calories !== null ? (
+                                    <span className="font-extrabold text-amber-700">{w.calories} kcal</span>
+                                  ) : (
+                                    <span className="text-slate-400 font-medium">-</span>
+                                  )}
+                                </td>
+                                <td className="py-3.5 px-3.5 font-mono font-bold text-slate-900">
+                                  {w.distanceOrSet !== '-' ? w.distanceOrSet : <span className="text-slate-400 font-medium">-</span>}
+                                </td>
+                                <td className="py-3.5 px-3.5 font-mono">
+                                  {w.speedOrPace !== '-' ? (
+                                    <span className="font-black text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded border border-emerald-200">
+                                      {w.speedOrPace}
+                                    </span>
+                                  ) : (
+                                    <span className="text-slate-400 font-medium">-</span>
+                                  )}
+                                </td>
+                                <td className="py-3.5 px-3.5 font-mono">
+                                  {w.heartRate !== null ? (
+                                    <span className="text-rose-700 font-black">{w.heartRate} bpm</span>
+                                  ) : (
+                                    <span className="text-slate-400 font-medium">-</span>
+                                  )}
+                                </td>
+                                <td className="py-3.5 px-4 text-slate-700 max-w-[160px] truncate font-medium" title={w.memo}>
+                                  {w.memo !== '-' && w.memo ? w.memo : '-'}
+                                </td>
+                                <td className="py-3.5 px-4 text-center whitespace-nowrap">
+                                  <div className="flex items-center justify-center gap-1.5">
+                                    <button
+                                      onClick={() => handleOpenEditWorkoutModal(w)}
+                                      title="수정"
+                                      className="p-2 text-slate-600 hover:text-emerald-800 hover:bg-emerald-50 rounded-xl transition-colors cursor-pointer"
+                                    >
+                                      <Edit3 className="w-4 h-4 stroke-[2.5]" />
+                                    </button>
+                                    <button
+                                      onClick={() => handleDeleteWorkout(w.index_)}
+                                      title="삭제"
+                                      className="p-2 text-slate-500 hover:text-rose-800 hover:bg-rose-50 rounded-xl transition-colors cursor-pointer"
+                                    >
+                                      <Trash2 className="w-4 h-4 stroke-[2.5]" />
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <div className="p-3.5 bg-slate-50 border-t border-slate-200 text-sm font-bold text-slate-700 flex flex-col sm:flex-row items-center justify-between gap-2">
+                    <span>총 등록된 운동 기록: <strong className="text-slate-950 font-mono font-black text-base">{parsedWorkouts.length}</strong>건</span>
+                    <span className="text-xs font-semibold text-slate-500">
+                      💡 운동 기록 추가 및 수정 시 스프레드시트에 실시간 영구 반영됩니다.
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* TAB 5: 일자별 볼륨 & 심박수 추이 (TRENDS) */}
+            {activeTab === 'trends' && (
+              <div className="space-y-6">
+                <div className="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200/80 shadow-xs">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h2 className="text-base sm:text-lg font-black text-slate-950 flex items-center gap-2">
+                        <BarChart3 className="w-5 h-5 text-emerald-600 stroke-[2.5]" />
+                        일자별 총 운동 시간(분) 및 칼로리 추이
+                      </h2>
+                      <p className="text-xs sm:text-sm font-bold text-slate-500 mt-1">
+                        {currentMonthTitle} 일자별 트레이닝 부하 및 세션 누적 지속 시간 변화
+                      </p>
+                    </div>
+                  </div>
+                  <div className="py-2">
+                    <D3DailyVolumeChart workouts={monthFilteredWorkouts} height={280} />
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200 shadow-sm">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h3 className="text-base sm:text-lg font-black text-slate-950 flex items-center gap-2">
+                        <HeartPulse className="w-5 h-5 text-rose-500 stroke-[2.5]" />
+                        세션별 평균 심박수(bpm) 모니터링
+                      </h3>
+                      <p className="text-xs sm:text-sm font-bold text-slate-500 mt-1">측정된 운동 세션의 심박 반응 및 유산소/고강도 구간</p>
+                    </div>
+                  </div>
+                  <div className="py-2">
+                    <D3HeartRateDistribution records={monthFilteredWorkouts} height={240} />
+                  </div>
+                </div>
+              </div>
+            )}
+          </main>
+
+          {/* 3. MODAL: ADD / EDIT WORKOUT LOG */}
+          {isWorkoutModalOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto">
+              <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 border border-slate-100 my-8">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-4 mb-5">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center">
+                      <Dumbbell className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-black text-slate-950">
+                        {editingWorkoutIndex !== null ? '운동 기록 수정' : '신규 운동 기록 등록'}
+                      </h3>
+                      <p className="text-xs sm:text-sm font-bold text-slate-500">운동 세부 정보를 입력하면 스프레드시트에 즉시 동기화됩니다.</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setIsWorkoutModalOpen(false)}
+                    className="p-2 text-slate-500 hover:text-slate-800 rounded-lg cursor-pointer"
+                  >
+                    <X className="w-5 h-5 stroke-[2.5]" />
+                  </button>
+                </div>
+
+                <form onSubmit={handleSaveWorkoutModal} className="space-y-4">
+                  <div className="grid grid-cols-2 gap-3.5">
+                    <div>
+                      <label className="block text-sm font-bold text-slate-800 mb-1.5">
+                        운동 일자 (YYYY-MM-DD) *
+                      </label>
+                      <input
+                        type="date"
+                        required
+                        value={workoutFormData.date}
+                        onChange={(e) => setWorkoutFormData({ ...workoutFormData, date: e.target.value })}
+                        className="w-full px-3.5 py-2.5 text-sm font-semibold text-slate-900 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-bold text-slate-800 mb-1.5">
+                        시작 시간 (HH:MM:SS)
+                      </label>
+                      <input
+                        type="text"
+                        value={workoutFormData.time}
+                        onChange={(e) => setWorkoutFormData({ ...workoutFormData, time: e.target.value })}
+                        placeholder="06:30:00"
+                        className="w-full px-3.5 py-2.5 text-sm font-semibold text-slate-900 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3.5">
+                    <div>
+                      <label className="block text-sm font-bold text-slate-800 mb-1.5">
+                        운동 종목 *
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={workoutFormData.activity}
+                        onChange={(e) => setWorkoutFormData({ ...workoutFormData, activity: e.target.value })}
+                        placeholder="실외 사이클, 실외 달리기 등"
+                        className="w-full px-3.5 py-2.5 text-sm font-semibold text-slate-900 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-bold text-slate-800 mb-1.5">
+                        운동 시간 (분) *
+                      </label>
+                      <input
+                        type="number"
+                        step="0.1"
+                        required
+                        value={workoutFormData.duration}
+                        onChange={(e) => setWorkoutFormData({ ...workoutFormData, duration: e.target.value })}
+                        placeholder="25.0"
+                        className="w-full px-3.5 py-2.5 text-sm font-semibold text-slate-900 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none font-mono"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3.5">
+                    <div>
+                      <label className="block text-sm font-bold text-slate-800 mb-1.5">
+                        거리 / 세트 / 횟수
+                      </label>
+                      <input
+                        type="text"
+                        value={workoutFormData.distanceOrSet}
+                        onChange={(e) => setWorkoutFormData({ ...workoutFormData, distanceOrSet: e.target.value })}
+                        placeholder="예: 5.67 km, 3세트, 300 m"
+                        className="w-full px-3.5 py-2.5 text-sm font-semibold text-slate-900 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-bold text-slate-800 mb-1.5">
+                        속도 / 페이스
+                      </label>
+                      <input
+                        type="text"
+                        value={workoutFormData.speedOrPace}
+                        onChange={(e) => setWorkoutFormData({ ...workoutFormData, speedOrPace: e.target.value })}
+                        placeholder={'예: 18.53 km/h, 7\'21"/km'}
+                        className="w-full px-3.5 py-2.5 text-sm font-semibold text-slate-900 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3.5">
+                    <div>
+                      <label className="block text-sm font-bold text-slate-800 mb-1.5">
+                        소모 칼로리 (kcal)
+                      </label>
+                      <input
+                        type="number"
+                        step="1"
+                        value={workoutFormData.calories}
+                        onChange={(e) => setWorkoutFormData({ ...workoutFormData, calories: e.target.value })}
+                        placeholder="180"
+                        className="w-full px-3.5 py-2.5 text-sm font-semibold text-slate-900 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none font-mono"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-bold text-slate-800 mb-1.5">
+                        평균 심박수 (bpm)
+                      </label>
+                      <input
+                        type="number"
+                        step="1"
+                        value={workoutFormData.heartRate}
+                        onChange={(e) => setWorkoutFormData({ ...workoutFormData, heartRate: e.target.value })}
+                        placeholder="125"
+                        className="w-full px-3.5 py-2.5 text-sm font-semibold text-slate-900 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none font-mono"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-bold text-slate-800 mb-1.5">
+                      메모 및 특이사항
+                    </label>
+                    <input
+                      type="text"
+                      value={workoutFormData.memo}
+                      onChange={(e) => setWorkoutFormData({ ...workoutFormData, memo: e.target.value })}
+                      placeholder="예: 아침 공복 유산소, 시원한 날씨"
+                      className="w-full px-3.5 py-2.5 text-sm font-semibold text-slate-900 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-end gap-3 pt-5 border-t border-slate-200">
+                    <button
+                      type="button"
+                      onClick={() => setIsWorkoutModalOpen(false)}
+                      className="px-4.5 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
+                    >
+                      취소
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-6 py-2.5 text-sm sm:text-base font-black text-white bg-emerald-600 hover:bg-emerald-700 active:scale-98 rounded-xl shadow-md transition-all cursor-pointer"
+                    >
+                      {editingWorkoutIndex !== null ? '변경사항 저장' : '새 운동 기록 저장'}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // --- INITIAL REAL DATA EMBEDDED FROM GOOGLE SHEETS ---
+    const INITIAL_REAL_DATA = __INITIAL_WORKOUT_DATA__;
+
+    // --- DASHBOARD CONTAINER COMPONENT (WRAPPER) ---
+    function DashboardContainer() {
+      const [data, setData] = useState(() => {
+        try {
+          const saved = localStorage.getItem('workout_dashboard_data');
+          if (saved) {
+            const parsed = JSON.parse(saved);
+            if (Array.isArray(parsed) && parsed.length >= INITIAL_REAL_DATA.length) {
+              return parsed;
+            }
+          }
+        } catch (e) {}
+        return INITIAL_REAL_DATA;
+      });
+
+      const [isServerLive, setIsServerLive] = useState(false);
+      const [lastSyncTime, setLastSyncTime] = useState('');
+      const [isSyncing, setIsSyncing] = useState(false);
+      const [syncNotice, setSyncNotice] = useState('');
+
+      const persistData = (newData) => {
+        setData(newData);
+        try {
+          localStorage.setItem('workout_dashboard_data', JSON.stringify(newData));
+        } catch (e) {}
+      };
+
+      const sendUpdateToServer = async (newData) => {
+        if (!isServerLive) return;
+        try {
+          await fetch('/api/save', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(newData)
+          });
+        } catch (e) {
+          console.warn('[Sync] Failed to post update to server:', e);
+        }
+      };
+
+      const fetchServerData = async (force = false) => {
+        setIsSyncing(true);
+        try {
+          const url = force ? '/api/sync' : '/api/data';
+          const method = force ? 'POST' : 'GET';
+          const res = await fetch(url, {
+            method,
+            headers: { 'Cache-Control': 'no-cache' }
+          });
+
+          if (res.ok) {
+            const jsonRes = await res.json();
+            if (jsonRes.data && Array.isArray(jsonRes.data) && jsonRes.data.length > 0) {
+              persistData(jsonRes.data);
+              setIsServerLive(true);
+              setLastSyncTime(jsonRes.synced_at || new Date().toLocaleTimeString('ko-KR'));
+              if (force) {
+                setSyncNotice('구글 시트 최신 데이터 동기화 완료!');
+                setTimeout(() => setSyncNotice(''), 3000);
+              }
+              return;
+            }
+          }
+        } catch (e) {
+          // Local sync server unavailable; fallback to static workout_data.json
+        }
+
+        // Static hosting fallback (e.g. GitHub Pages)
+        try {
+          const staticRes = await fetch('./workout_data.json?t=' + Date.now());
+          if (staticRes.ok) {
+            const staticJson = await staticRes.json();
+            if (Array.isArray(staticJson) && staticJson.length > 0) {
+              persistData(staticJson);
+              setIsServerLive(true);
+              setLastSyncTime('정적 배포 동기화 완료');
+              if (force) {
+                setSyncNotice('최신 배포 데이터 동기화 완료!');
+                setTimeout(() => setSyncNotice(''), 3000);
+              }
+              return;
+            }
+          }
+        } catch (err) {}
+
+        setIsServerLive(false);
+        setIsSyncing(false);
+      };
+
+      useEffect(() => {
+        fetchServerData(false);
+        const interval = setInterval(() => {
+          fetchServerData(false);
+        }, 15000);
+        return () => clearInterval(interval);
+      }, []);
+
+      const updateItem = (index_, newRow) => {
+        const updated = data.map(item => {
+          if (item.index_ === index_) {
+            return { ...item, row: newRow };
+          }
+          return item;
+        });
+        persistData(updated);
+        sendUpdateToServer(updated);
+      };
+
+      const deleteItem = (index_) => {
+        const updated = data.filter(item => item.index_ !== index_);
+        persistData(updated);
+        sendUpdateToServer(updated);
+      };
+
+      const insertItem = (targetIndex, newRow) => {
+        const maxIndex = data.reduce((max, it) => Math.max(max, it.index_ || 0), 0);
+        const newItem = {
+          index_: maxIndex + 1,
+          row: newRow
+        };
+        const updated = [...data, newItem];
+        persistData(updated);
+        sendUpdateToServer(updated);
+      };
+
+      const moveItem = (fromIndex, toIndex) => {
+        const copy = [...data];
+        const [removed] = copy.splice(fromIndex, 1);
+        copy.splice(toIndex, 0, removed);
+        persistData(copy);
+        sendUpdateToServer(copy);
+      };
+
+      const followLink = (url) => {
+        window.open(url, '_blank');
+      };
+
+      const handleResetData = () => {
+        if (confirm('구글 시트의 원본 데이터로 초기화하시겠습니까? 로컬에서 수정한 내용은 리셋됩니다.')) {
+          localStorage.removeItem('workout_dashboard_data');
+          persistData(INITIAL_REAL_DATA);
+          fetchServerData(true);
+        }
+      };
+
+      return (
+        <div className="relative">
+          {syncNotice && (
+            <div className="fixed top-4 right-4 z-50 bg-emerald-600 text-white text-xs font-black px-4 py-2.5 rounded-xl shadow-lg flex items-center gap-2 animate-bounce">
+              <CheckCircle2 className="w-4 h-4" />
+              <span>{syncNotice}</span>
+            </div>
+          )}
+
+          <App
+            data={data}
+            updateItem={updateItem}
+            deleteItem={deleteItem}
+            insertItem={insertItem}
+            moveItem={moveItem}
+            followLink={followLink}
+            onManualSync={() => fetchServerData(true)}
+            isLiveConnected={isServerLive}
+            lastServerSyncTime={lastSyncTime}
+            isSyncing={isSyncing}
+            syncNotice={syncNotice}
+          />
+
+          {/* Floating Helper Toolbar */}
+          <div className="fixed bottom-4 right-4 z-40 flex items-center gap-2 bg-white/95 backdrop-blur-md p-2 rounded-2xl shadow-xl border border-slate-300 text-xs font-bold">
+            <a
+              href="https://docs.google.com/spreadsheets/d/1prXk269ik5JTbghA5UZbh3uW56pMrzGhqnNtkrm3YKw/edit?usp=sharing"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-3 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-300 transition-colors flex items-center gap-1.5 cursor-pointer font-black"
+              title="구글 스프레드시트 원본 '운동 기록' 열기"
+            >
+              <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+              <span>구글 시트 원본</span>
+              <ArrowUpRight className="w-3.5 h-3.5" />
+            </a>
+            <span className="text-slate-300">|</span>
+            <button
+              onClick={() => fetchServerData(true)}
+              disabled={isSyncing}
+              className="px-3 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-800 border border-indigo-200 transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-60 font-black"
+              title="구글 시트 즉시 동기화"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 text-indigo-600 ${isSyncing ? 'animate-spin' : ''}`} />
+              <span>{isSyncing ? '동기화 중...' : '시트 동기화'}</span>
+            </button>
+            <span className="text-slate-300">|</span>
+            <button
+              onClick={handleResetData}
+              className="px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors flex items-center gap-1 cursor-pointer"
+              title="원본 데이터로 리셋"
+            >
+              <RotateCcw className="w-3.5 h-3.5 text-slate-500" />
+              <span>초기화</span>
+            </button>
+            <span className="text-slate-300">|</span>
+            <span className="text-emerald-800 font-black px-2 py-1 bg-emerald-50 rounded-lg flex items-center gap-1 border border-emerald-200">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+              {isServerLive ? '구글시트 실시간 연동 ON' : '로컬 모드'}
+            </span>
+          </div>
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<DashboardContainer />);
+  </script>
+</body>
+</html>

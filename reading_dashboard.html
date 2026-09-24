@@ -1,0 +1,3371 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>독서 & 논술 지도 튜터링 대시보드</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- React & ReactDOM 18 -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <!-- D3.js v7 -->
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <!-- Babel Standalone for JSX -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+    }
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-900">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useMemo, useRef, useEffect } = React;
+
+    // --- Lucide Icons (SVG Implementations) ---
+    const BookOpen = ({ className = "w-4 h-4", ...p }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...p}>
+        <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+      </svg>
+    );
+    const Sparkles = ({ className = "w-4 h-4", ...p }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...p}>
+        <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/>
+        <path d="M5 3v4"/><path d="M19 17v4"/><path d="M3 5h4"/><path d="M17 19h4"/>
+      </svg>
+    );
+    const UserCheck = ({ className = "w-4 h-4", ...p }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...p}>
+        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><polyline points="16 11 18 13 22 9"/>
+      </svg>
+    );
+    const Award = ({ className = "w-4 h-4", ...p }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...p}>
+        <circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/>
+      </svg>
+    );
+    const Calendar = ({ className = "w-4 h-4", ...p }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...p}>
+        <rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/>
+      </svg>
+    );
+    const BarChart3 = ({ className = "w-4 h-4", ...p }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...p}>
+        <path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/>
+      </svg>
+    );
+    const CheckCircle2 = ({ className = "w-4 h-4", ...p }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...p}>
+        <circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>
+      </svg>
+    );
+    const Edit3 = ({ className = "w-4 h-4", ...p }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...p}>
+        <path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>
+      </svg>
+    );
+    const Trash2 = ({ className = "w-4 h-4", ...p }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...p}>
+        <path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/>
+      </svg>
+    );
+    const Plus = ({ className = "w-4 h-4", ...p }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...p}>
+        <path d="M5 12h14"/><path d="M12 5v14"/>
+      </svg>
+    );
+    const Search = ({ className = "w-4 h-4", ...p }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...p}>
+        <circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>
+      </svg>
+    );
+    const Filter = ({ className = "w-4 h-4", ...p }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...p}>
+        <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>
+      </svg>
+    );
+    const ChevronRight = ({ className = "w-4 h-4", ...p }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...p}>
+        <path d="m9 18 6-6-6-6"/>
+      </svg>
+    );
+    const X = ({ className = "w-4 h-4", ...p }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...p}>
+        <path d="M18 6 6 18"/><path d="m6 6 12 12"/>
+      </svg>
+    );
+    const Quote = ({ className = "w-4 h-4", ...p }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...p}>
+        <path d="M16 3a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2 1 1 0 0 1 1 1v1a2 2 0 0 1-2 2 1 1 0 0 0-1 1v2a1 1 0 0 0 1 1 6 6 0 0 0 6-6V5a2 2 0 0 0-2-2z"/><path d="M5 3a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2 1 1 0 0 1 1 1v1a2 2 0 0 1-2 2 1 1 0 0 0-1 1v2a1 1 0 0 0 1 1 6 6 0 0 0 6-6V5a2 2 0 0 0-2-2z"/>
+      </svg>
+    );
+    const FileText = ({ className = "w-4 h-4", ...p }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...p}>
+        <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/>
+      </svg>
+    );
+    const Lightbulb = ({ className = "w-4 h-4", ...p }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...p}>
+        <path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/>
+      </svg>
+    );
+    const AlertCircle = ({ className = "w-4 h-4", ...p }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...p}>
+        <circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/>
+      </svg>
+    );
+    const TrendingUp = ({ className = "w-4 h-4", ...p }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...p}>
+        <polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/>
+      </svg>
+    );
+    const Bookmark = ({ className = "w-4 h-4", ...p }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...p}>
+        <path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/>
+      </svg>
+    );
+    const MessageSquare = ({ className = "w-4 h-4", ...p }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...p}>
+        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+      </svg>
+    );
+    const PenTool = ({ className = "w-4 h-4", ...p }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...p}>
+        <path d="m12 19 7-7 3 3-7 7-3-3z"/><path d="m18 13-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="m2 2 7.586 7.586"/><circle cx="11" cy="11" r="2"/>
+      </svg>
+    );
+    const RotateCcw = ({ className = "w-4 h-4", ...p }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...p}>
+        <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/>
+      </svg>
+    );
+    const RefreshCw = ({ className = "w-4 h-4", ...p }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...p}>
+        <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/>
+      </svg>
+    );
+    const GraduationCap = ({ className = "w-4 h-4", ...p }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...p}>
+        <path d="M21.42 10.922a1 1 0 0 0-.019-1.838L12.83 5.18a2 2 0 0 0-1.66 0L2.6 9.08a1 1 0 0 0 0 1.832l8.57 3.908a2 2 0 0 0 1.66 0z"/><path d="M22 10v6"/><path d="M6 12.5V16a6 3 0 0 0 12 0v-3.5"/>
+      </svg>
+    );
+    const Target = ({ className = "w-4 h-4", ...p }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...p}>
+        <circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>
+      </svg>
+    );
+    const Trophy = ({ className = "w-4 h-4", ...p }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...p}>
+        <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/>
+      </svg>
+    );
+    const Activity = ({ className = "w-4 h-4", ...p }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...p}>
+        <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+      </svg>
+    );
+    const ArrowUpRight = ({ className = "w-4 h-4", ...p }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...p}>
+        <path d="M7 7h10v10"/><path d="M7 17 17 7"/>
+      </svg>
+    );
+    const SlidersHorizontal = ({ className = "w-4 h-4", ...p }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...p}>
+        <line x1="21" x2="14" y1="4" y2="4"/><line x1="10" x2="3" y1="4" y2="4"/><line x1="21" x2="12" y1="12" y2="12"/><line x1="8" x2="3" y1="12" y2="12"/><line x1="21" x2="16" y1="20" y2="20"/><line x1="12" x2="3" y1="20" y2="20"/><line x1="14" x2="14" y1="2" y2="6"/><line x1="8" x2="8" y1="10" y2="14"/><line x1="16" x2="16" y1="18" y2="22"/>
+      </svg>
+    );
+
+    // Robust decoding utility to repair UTF-8 byte streams misdecoded as Latin-1/CP-1252 (mojibake)
+    function decodeUtf8Bytes(str) {
+      if (typeof str !== 'string' || !str) return str;
+      if (/[\uAC00-\uD7A3\u3131-\u318E]/.test(str)) return str;
+      const hasPotentialMojibake = /[\u0080-\u00FF\u2010-\u203A\u20AC\u2122]/.test(str);
+      if (!hasPotentialMojibake) return str;
+
+      const cp1252Map = {
+        0x20AC: 0x80, 0x201A: 0x82, 0x0192: 0x83, 0x201E: 0x84, 0x2026: 0x85,
+        0x2020: 0x86, 0x2021: 0x87, 0x02C6: 0x88, 0x2030: 0x89, 0x0160: 0x8A,
+        0x2039: 0x8B, 0x0152: 0x8C, 0x017D: 0x8E, 0x2018: 0x91, 0x2019: 0x92,
+        0x201C: 0x93, 0x201D: 0x94, 0x2022: 0x95, 0x2013: 0x96, 0x2014: 0x97,
+        0x02DC: 0x98, 0x2122: 0x99, 0x0161: 0x9A, 0x203A: 0x9B, 0x0153: 0x9C,
+        0x017E: 0x9E, 0x0178: 0x9F
+      };
+
+      try {
+        const bytes = new Uint8Array(str.length);
+        for (let i = 0; i < str.length; i++) {
+          const code = str.charCodeAt(i);
+          if (code <= 0xFF) {
+            bytes[i] = code;
+          } else if (cp1252Map[code] !== undefined) {
+            bytes[i] = cp1252Map[code];
+          } else {
+            return str;
+          }
+        }
+        return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+      } catch (e) {
+        return str;
+      }
+    }
+
+    function deriveGrade(total) {
+      if (total >= 90) return 'S';
+      if (total >= 85) return 'A+';
+      if (total >= 80) return 'A';
+      if (total >= 70) return 'B+';
+      if (total >= 60) return 'B';
+      return 'C';
+    }
+
+    function getGradeTheme(grade) {
+      switch (grade) {
+        case 'S':
+          return {
+            bg: 'bg-emerald-600',
+            lightBg: 'bg-emerald-50',
+            text: 'text-emerald-700',
+            border: 'border-emerald-300',
+            badge: 'bg-emerald-600 text-white shadow-xs'
+          };
+        case 'A+':
+          return {
+            bg: 'bg-indigo-600',
+            lightBg: 'bg-indigo-50',
+            text: 'text-indigo-700',
+            border: 'border-indigo-300',
+            badge: 'bg-indigo-600 text-white shadow-xs'
+          };
+        case 'A':
+          return {
+            bg: 'bg-blue-600',
+            lightBg: 'bg-blue-50',
+            text: 'text-blue-700',
+            border: 'border-blue-300',
+            badge: 'bg-blue-600 text-white shadow-xs'
+          };
+        case 'B+':
+          return {
+            bg: 'bg-amber-600',
+            lightBg: 'bg-amber-50',
+            text: 'text-amber-700',
+            border: 'border-amber-300',
+            badge: 'bg-amber-600 text-white shadow-xs'
+          };
+        case 'B':
+          return {
+            bg: 'bg-orange-500',
+            lightBg: 'bg-orange-50',
+            text: 'text-orange-700',
+            border: 'border-orange-300',
+            badge: 'bg-orange-500 text-white'
+          };
+        default:
+          return {
+            bg: 'bg-slate-600',
+            lightBg: 'bg-slate-50',
+            text: 'text-slate-700',
+            border: 'border-slate-300',
+            badge: 'bg-slate-600 text-white'
+          };
+      }
+    }
+
+    // --- Custom D3 SVG Trend Chart: Gradual Score & Grade Growth Over Time ---
+    function ScoreGradeTrendChart({ records, selectedItemIndex, onSelectItem, metric, sortMode }) {
+      const [hoveredIndex, setHoveredIndex] = useState(null);
+
+      const chartData = useMemo(() => {
+        if (!records) return [];
+        const list = records.filter(r => r.totalScore !== null || r.scoreA !== null);
+        return [...list].sort((a, b) => {
+          if (sortMode === 'session') {
+            return a.sessionNum - b.sessionNum;
+          }
+          return (a.rawDate || '').localeCompare(b.rawDate || '') || a.sessionNum - b.sessionNum;
+        });
+      }, [records, sortMode]);
+
+      if (chartData.length === 0) {
+        return (
+          <div className="h-full flex items-center justify-center text-sm font-bold text-slate-500">
+            등록된 점수 및 등급 데이터가 없습니다.
+          </div>
+        );
+      }
+
+      const width = 840;
+      const height = 280;
+      const margin = { top: 32, right: 70, bottom: 44, left: 45 };
+      const innerWidth = width - margin.left - margin.right;
+      const innerHeight = height - margin.top - margin.bottom;
+
+      const isSubScore = ['scoreA', 'scoreB', 'scoreC', 'scoreD'].includes(metric);
+      const yDomain = isSubScore ? [0, 25] : [60, 100];
+
+      const xScale = d3.scalePoint()
+        .domain(chartData.map((d, i) => `${d.session || d.sessionNum}회`))
+        .range([0, innerWidth])
+        .padding(0.45);
+
+      const yScale = d3.scaleLinear()
+        .domain(yDomain)
+        .range([innerHeight, 0]);
+
+      const gradeBands = [
+        { label: 'S (90~100)', min: 90, max: 100, color: 'rgba(16, 185, 129, 0.09)' },
+        { label: 'A+ (85~89)', min: 85, max: 90, color: 'rgba(99, 102, 241, 0.08)' },
+        { label: 'A (80~84)', min: 80, max: 85, color: 'rgba(59, 130, 246, 0.07)' },
+        { label: 'B+ (70~79)', min: 70, max: 80, color: 'rgba(245, 158, 11, 0.06)' },
+      ];
+
+      const createLinePath = (getValue) => {
+        const lineGen = d3.line()
+          .x((d, i) => xScale(`${d.session || d.sessionNum}회`))
+          .y((d) => yScale(getValue(d)))
+          .curve(d3.curveMonotoneX);
+        return lineGen(chartData);
+      };
+
+      const createAreaPath = (getValue) => {
+        const areaGen = d3.area()
+          .x((d, i) => xScale(`${d.session || d.sessionNum}회`))
+          .y0(innerHeight)
+          .y1((d) => yScale(getValue(d)))
+          .curve(d3.curveMonotoneX);
+        return areaGen(chartData);
+      };
+
+      const yTicks = yScale.ticks(isSubScore ? 5 : 5);
+
+      return (
+        <div className="w-full h-full relative">
+          <svg
+            viewBox={`0 0 ${width} ${height}`}
+            className="w-full h-full overflow-visible select-none"
+            preserveAspectRatio="xMidYMid meet"
+          >
+            <defs>
+              <linearGradient id="totalGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#4f46e5" stopOpacity="0.32" />
+                <stop offset="100%" stopColor="#4f46e5" stopOpacity="0.01" />
+              </linearGradient>
+            </defs>
+
+            {!isSubScore && gradeBands.map((band, i) => {
+              const yTop = yScale(Math.min(band.max, yDomain[1]));
+              const yBottom = yScale(Math.max(band.min, yDomain[0]));
+              const h = Math.max(0, yBottom - yTop);
+              return (
+                <g key={i} transform={`translate(${margin.left}, ${margin.top})`}>
+                  <rect
+                    x={0}
+                    y={yTop}
+                    width={innerWidth}
+                    height={h}
+                    fill={band.color}
+                  />
+                  <text
+                    x={innerWidth + 8}
+                    y={yTop + h / 2 + 4}
+                    className="text-[10px] font-black fill-slate-700"
+                  >
+                    {band.label}
+                  </text>
+                </g>
+              );
+            })}
+
+            {yTicks.map(tick => (
+              <g key={tick} transform={`translate(${margin.left}, ${margin.top + yScale(tick)})`}>
+                <line x1={0} x2={innerWidth} stroke="#e2e8f0" strokeDasharray="3 3" />
+                <text
+                  x={-8}
+                  y={4}
+                  textAnchor="end"
+                  className="text-[11px] font-bold fill-slate-800 font-mono"
+                >
+                  {tick}점
+                </text>
+              </g>
+            ))}
+
+            <g transform={`translate(${margin.left}, ${margin.top})`}>
+              {(metric === 'total' || metric === 'all4') && (
+                <path
+                  d={createAreaPath(d => d.totalScore || 0)}
+                  fill="url(#totalGrad)"
+                />
+              )}
+
+              {metric === 'all4' && (
+                <>
+                  <path
+                    d={createLinePath(d => (d.scoreA || 0) * 4)}
+                    fill="none"
+                    stroke="#6366f1"
+                    strokeWidth="2"
+                    strokeDasharray="4 2"
+                    opacity="0.85"
+                  />
+                  <path
+                    d={createLinePath(d => (d.scoreB || 0) * 4)}
+                    fill="none"
+                    stroke="#0284c7"
+                    strokeWidth="2"
+                    strokeDasharray="4 2"
+                    opacity="0.85"
+                  />
+                  <path
+                    d={createLinePath(d => (d.scoreC || 0) * 4)}
+                    fill="none"
+                    stroke="#9333ea"
+                    strokeWidth="2"
+                    strokeDasharray="4 2"
+                    opacity="0.85"
+                  />
+                  <path
+                    d={createLinePath(d => (d.scoreD || 0) * 4)}
+                    fill="none"
+                    stroke="#d97706"
+                    strokeWidth="2"
+                    strokeDasharray="4 2"
+                    opacity="0.85"
+                  />
+                </>
+              )}
+
+              {isSubScore && (
+                <path
+                  d={createLinePath(d => d[metric] || 0)}
+                  fill="none"
+                  stroke="#4f46e5"
+                  strokeWidth="3"
+                />
+              )}
+
+              {(metric === 'total' || metric === 'all4') && (
+                <path
+                  d={createLinePath(d => d.totalScore || 0)}
+                  fill="none"
+                  stroke="#4338ca"
+                  strokeWidth="3.5"
+                  strokeLinecap="round"
+                />
+              )}
+
+              {chartData.map((d, idx) => {
+                const xVal = xScale(`${d.session || d.sessionNum}회`);
+                const targetScore = isSubScore ? (d[metric] || 0) : (d.totalScore || 0);
+                const yVal = yScale(targetScore);
+                const isSelected = selectedItemIndex === d.index_;
+                const isHovered = hoveredIndex === d.index_;
+                const isLast = idx === chartData.length - 1;
+
+                return (
+                  <g
+                    key={d.index_}
+                    className="cursor-pointer"
+                    onClick={() => onSelectItem(d.index_)}
+                    onMouseEnter={() => setHoveredIndex(d.index_)}
+                    onMouseLeave={() => setHoveredIndex(null)}
+                  >
+                    <line
+                      x1={xVal}
+                      x2={xVal}
+                      y1={yVal}
+                      y2={innerHeight}
+                      stroke={isSelected ? '#4f46e5' : '#cbd5e1'}
+                      strokeDasharray={isSelected ? 'none' : '2 2'}
+                      strokeWidth={isSelected ? '2' : '1'}
+                    />
+
+                    {(isSelected || isHovered) && (
+                      <circle
+                        cx={xVal}
+                        cy={yVal}
+                        r={isSelected ? 11 : 9}
+                        fill="#4f46e5"
+                        fillOpacity="0.22"
+                      />
+                    )}
+
+                    <circle
+                      cx={xVal}
+                      cy={yVal}
+                      r={isSelected ? 6.5 : isLast ? 6 : 5}
+                      fill={isLast ? '#059669' : isSelected ? '#4338ca' : '#4f46e5'}
+                      stroke="#ffffff"
+                      strokeWidth="2.5"
+                    />
+
+                    <g transform={`translate(${xVal}, ${yVal - 14})`}>
+                      <rect
+                        x="-20"
+                        y="-13"
+                        width="40"
+                        height="17"
+                        rx="4"
+                        fill={isSelected ? '#312e81' : isLast ? '#065f46' : '#ffffff'}
+                        stroke={isSelected ? '#4338ca' : isLast ? '#059669' : '#cbd5e1'}
+                        strokeWidth="1"
+                        filter="drop-shadow(0 1px 2px rgba(0,0,0,0.08))"
+                      />
+                      <text
+                        textAnchor="middle"
+                        y="-1"
+                        className={`text-[11px] font-black font-mono ${
+                          isSelected || isLast ? 'fill-white' : 'fill-slate-900'
+                        }`}
+                      >
+                        {targetScore}점
+                      </text>
+                    </g>
+
+                    {!isSubScore && d.grade && (
+                      <text
+                        x={xVal}
+                        y={yVal + 17}
+                        textAnchor="middle"
+                        className={`text-[11px] font-black ${
+                          d.grade === 'S'
+                            ? 'fill-emerald-700'
+                            : d.grade === 'A+'
+                            ? 'fill-indigo-700'
+                            : 'fill-slate-700'
+                        }`}
+                      >
+                        {d.grade}
+                      </text>
+                    )}
+
+                    <text
+                      x={xVal}
+                      y={innerHeight + 18}
+                      textAnchor="middle"
+                      className={`text-xs ${
+                        isSelected ? 'font-black fill-indigo-950' : 'font-extrabold fill-slate-800'
+                      }`}
+                    >
+                      {d.session || `${d.sessionNum}회차`}
+                    </text>
+
+                    <text
+                      x={xVal}
+                      y={innerHeight + 32}
+                      textAnchor="middle"
+                      className={`text-[10px] font-semibold ${
+                        isSelected ? 'fill-indigo-700 font-bold' : 'fill-slate-500'
+                      }`}
+                    >
+                      {d.rawDate ? `${d.month}/${d.day}` : ''}
+                    </text>
+                  </g>
+                );
+              })}
+            </g>
+          </svg>
+
+          {hoveredIndex !== null && (
+            <div className="absolute top-2 left-14 bg-slate-900/95 text-white p-2.5 rounded-xl shadow-xl text-xs space-y-1 pointer-events-none z-20 border border-slate-700">
+              {(() => {
+                const h = chartData.find(d => d.index_ === hoveredIndex);
+                if (!h) return null;
+                return (
+                  <>
+                    <div className="font-extrabold flex items-center gap-2">
+                      <span className="px-1.5 py-0.5 rounded bg-indigo-600 text-[10px]">{h.session}</span>
+                      <span>{h.bookTitle}</span>
+                      <span className="text-slate-400 font-mono">({h.rawDate})</span>
+                    </div>
+                    <div className="flex items-center gap-3 pt-1 text-slate-200">
+                      <span>총점: <strong className="text-emerald-400 text-sm font-black">{h.totalScore}점</strong></span>
+                      <span>성취등급: <strong className="text-indigo-300 font-black">{h.grade}</strong></span>
+                      <span>이해 {h.scoreA} · 비판 {h.scoreB} · 내면 {h.scoreC} · 표현 {h.scoreD}</span>
+                    </div>
+                  </>
+                );
+              })()}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // --- Custom D3 SVG Bar Chart: Monthly Reading Progress ---
+    function MonthlyBarChart({ data, activeFilter, onSelectMonth }) {
+      const [hoveredBar, setHoveredBar] = useState(null);
+
+      if (!data || data.length === 0) {
+        return (
+          <div className="h-full flex items-center justify-center text-sm font-bold text-slate-700">
+            월별 기록 데이터가 없습니다.
+          </div>
+        );
+      }
+
+      const width = 380;
+      const height = 150;
+      const margin = { top: 25, right: 20, bottom: 28, left: 35 };
+      const innerWidth = width - margin.left - margin.right;
+      const innerHeight = height - margin.top - margin.bottom;
+
+      const maxVal = d3.max(data, d => d.count) || 1;
+      const yDomainMax = Math.max(maxVal + 1, 4);
+
+      const xScale = d3
+        .scaleBand()
+        .domain(data.map(d => d.monthKey))
+        .range([0, innerWidth])
+        .padding(0.38);
+
+      const yScale = d3
+        .scaleLinear()
+        .domain([0, yDomainMax])
+        .nice()
+        .range([innerHeight, 0]);
+
+      const yTicks = yScale.ticks(4);
+
+      return (
+        <div className="w-full h-full relative">
+          <svg
+            viewBox={`0 0 ${width} ${height}`}
+            className="w-full h-full overflow-visible"
+            preserveAspectRatio="xMidYMid meet"
+          >
+            {yTicks.map(tick => (
+              <g key={tick} transform={`translate(${margin.left}, ${margin.top + yScale(tick)})`}>
+                <line x1={0} x2={innerWidth} stroke="#f1f5f9" strokeDasharray="3 3" />
+                <text
+                  x={-8}
+                  y={4}
+                  textAnchor="end"
+                  className="text-[11px] fill-slate-800 font-extrabold font-mono"
+                >
+                  {tick}
+                </text>
+              </g>
+            ))}
+
+            <line
+              x1={margin.left}
+              x2={margin.left + innerWidth}
+              y1={margin.top + innerHeight}
+              y2={margin.top + innerHeight}
+              stroke="#cbd5e1"
+              strokeWidth="1.5"
+            />
+
+            <g transform={`translate(${margin.left}, ${margin.top})`}>
+              {data.map(d => {
+                const barX = xScale(d.monthKey);
+                const barY = yScale(d.count);
+                const barWidth = xScale.bandwidth();
+                const barHeight = Math.max(innerHeight - barY, 2);
+                const isSelected = activeFilter === d.monthKey;
+                const isHovered = hoveredBar === d.monthKey;
+
+                return (
+                  <g
+                    key={d.monthKey}
+                    className="cursor-pointer group"
+                    onClick={() => onSelectMonth(d.monthKey)}
+                    onMouseEnter={() => setHoveredBar(d.monthKey)}
+                    onMouseLeave={() => setHoveredBar(null)}
+                  >
+                    <rect
+                      x={barX}
+                      y={barY}
+                      width={barWidth}
+                      height={barHeight}
+                      rx={4}
+                      className={`transition-all duration-200 ${
+                        isSelected
+                          ? 'fill-indigo-600'
+                          : isHovered
+                          ? 'fill-indigo-400'
+                          : 'fill-indigo-500/85 hover:fill-indigo-500'
+                      }`}
+                    />
+                    <text
+                      x={barX + barWidth / 2}
+                      y={barY - 6}
+                      textAnchor="middle"
+                      className={`text-xs font-black ${
+                        isSelected ? 'fill-indigo-800' : 'fill-slate-900'
+                      }`}
+                    >
+                      {d.count}권
+                    </text>
+                    <text
+                      x={barX + barWidth / 2}
+                      y={innerHeight + 18}
+                      textAnchor="middle"
+                      className={`text-xs ${
+                        isSelected ? 'fill-indigo-950 font-black' : 'fill-slate-800 font-bold'
+                      }`}
+                    >
+                      {d.label}
+                    </text>
+                  </g>
+                );
+              })}
+            </g>
+          </svg>
+
+          {hoveredBar && (
+            <div className="absolute top-1 right-2 bg-slate-900 text-white text-xs font-bold px-2.5 py-1.5 rounded-md shadow-md pointer-events-none z-10">
+              {data.find(d => d.monthKey === hoveredBar)?.label}:{' '}
+              <span className="font-extrabold text-indigo-300">
+                {data.find(d => d.monthKey === hoveredBar)?.count}권 완독
+              </span>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // --- Main App Component ---
+    function App({ data, updateItem, deleteItem, insertItem, moveItem, followLink, onManualSync, isLiveConnected, lastSyncTime: parentSyncTime, isSyncing: parentIsSyncing }) {
+      const [refreshTick, setRefreshTick] = useState(0);
+
+      const cleanData = useMemo(() => {
+        if (!data || !Array.isArray(data)) return [];
+        return data.map(item => ({
+          index_: item.index_,
+          row: Array.isArray(item.row)
+            ? item.row.map(cell => (typeof cell === 'string' ? decodeUtf8Bytes(cell) : cell))
+            : []
+        }));
+      }, [data, refreshTick]);
+
+      const headerInfo = useMemo(() => {
+        if (!cleanData || cleanData.length === 0) return { headerRowIndex: 0, headers: [] };
+        const found = cleanData.find(item =>
+          item.row &&
+          item.row.some(c => typeof c === 'string' && (c.includes('회차') || c.includes('분류') || c.includes('도서명') || c.includes('줄거리')))
+        );
+        return {
+          headerRowIndex: found ? found.index_ : 0,
+          headers: found ? found.row : []
+        };
+      }, [cleanData]);
+
+      const colIndexes = useMemo(() => {
+        const headers = headerInfo.headers;
+        const findIndex = (predicate, fallback) => {
+          const idx = headers.findIndex(c => typeof c === 'string' && predicate(c.toLowerCase()));
+          return idx !== -1 ? idx : fallback;
+        };
+        return {
+          session: findIndex(c => c.includes('회차'), 0),
+          date: findIndex(c => c.includes('기록일') || c.includes('일자') || c.includes('날짜'), 1),
+          title: findIndex(c => c.includes('분류') || c.includes('도서명'), 2),
+          author: findIndex(c => c.includes('저자'), 3),
+          summary: findIndex(c => c.includes('줄거리'), 4),
+          quote: findIndex(c => c.includes('인상 깊은') || c.includes('문장'), 5),
+          studentThoughts: findIndex(c => c.includes('느낀 점') || c.includes('느낀점'), 6),
+          internalization: findIndex(c => c.includes('나의 생각') || c.includes('달라진 점') || c.includes('내면화'), 7),
+          aiAnalysis: findIndex(c => c.includes('ai') || c.includes('강점'), 8),
+          tutoringAdvice: findIndex(c => c.includes('지도 조언') || c.includes('보완점'), 9),
+          spellingCorrection: findIndex(c => c.includes('맞춤법') || c.includes('교정'), 10),
+          kidFeedback: findIndex(c => c.includes('피드백') || c.includes('코멘트'), 11),
+          scoreA: findIndex(c => c.includes('텍스트이해') || c.includes('텍스트 이해') || c.includes('a.텍스트'), 12),
+          scoreB: findIndex(c => c.includes('비판적사고') || c.includes('비판적 사고') || c.includes('b.비판'), 13),
+          scoreC: findIndex(c => c.includes('가치내면화') || c.includes('가치 내면화') || c.includes('c.가치'), 14),
+          scoreD: findIndex(c => c.includes('표현정밀도') || c.includes('표현 정밀도') || c.includes('d.표현'), 15),
+          totalScore: findIndex(c => c.includes('총점'), 16),
+          grade: findIndex(c => c.includes('성취등급') || c.includes('등급'), 17)
+        };
+      }, [headerInfo]);
+
+      const records = useMemo(() => {
+        if (!cleanData) return [];
+        const parseScore = (val) => {
+          if (val === null || val === undefined || val === '') return null;
+          const num = typeof val === 'number' ? val : parseFloat(String(val).replace(/[^0-9.]/g, ''));
+          return isNaN(num) ? null : num;
+        };
+
+        return cleanData
+          .filter(item => item.index_ !== headerInfo.headerRowIndex && item.row && item.row.some(cell => cell !== null && cell !== ''))
+          .map(item => {
+            const row = item.row;
+            const rawTitle = row[colIndexes.title] || '';
+            let category = '기타';
+            let bookTitle = String(rawTitle).trim();
+
+            const catMatch = bookTitle.match(/^\[(.*?)\]\s*(.*)$/);
+            if (catMatch) {
+              category = catMatch[1].trim();
+              bookTitle = catMatch[2].trim();
+            }
+
+            const dateStr = row[colIndexes.date] ? String(row[colIndexes.date]).trim() : '';
+            let year = null;
+            let month = null;
+            let day = null;
+            let monthKey = '';
+            let timestamp = 0;
+
+            if (dateStr) {
+              const cleanDate = dateStr.replace(/[\.\/]/g, '-').replace(/\s+/g, '');
+              const parts = cleanDate.split('-').filter(Boolean);
+              if (parts.length === 3) {
+                let y = parseInt(parts[0], 10);
+                const m = parseInt(parts[1], 10);
+                const d = parseInt(parts[2], 10);
+                if (y < 100) y += 2000;
+                if (!isNaN(y) && !isNaN(m) && !isNaN(d)) {
+                  year = y;
+                  month = m;
+                  day = d;
+                  monthKey = `${year}-${String(month).padStart(2, '0')}`;
+                  timestamp = new Date(year, month - 1, day).getTime();
+                }
+              }
+            }
+
+            const rawSession = row[colIndexes.session] ? String(row[colIndexes.session]).trim() : '';
+            const sessionMatch = rawSession.match(/\d+/);
+            const sessionNum = sessionMatch ? parseInt(sessionMatch[0], 10) : item.index_;
+
+            const scoreA = parseScore(row[colIndexes.scoreA]);
+            const scoreB = parseScore(row[colIndexes.scoreB]);
+            const scoreC = parseScore(row[colIndexes.scoreC]);
+            const scoreD = parseScore(row[colIndexes.scoreD]);
+            let totalScore = parseScore(row[colIndexes.totalScore]);
+            if (totalScore === null && (scoreA !== null || scoreB !== null || scoreC !== null || scoreD !== null)) {
+              totalScore = (scoreA || 0) + (scoreB || 0) + (scoreC || 0) + (scoreD || 0);
+            }
+
+            const rawGrade = row[colIndexes.grade] ? String(row[colIndexes.grade]).trim() : '';
+            const grade = rawGrade || (totalScore !== null ? deriveGrade(totalScore) : '');
+
+            const originalRawRow = data?.find(d => d.index_ === item.index_)?.row || row;
+
+            return {
+              index_: item.index_,
+              session: rawSession,
+              sessionNum,
+              rawDate: dateStr,
+              year,
+              month,
+              day,
+              monthKey,
+              timestamp,
+              fullTitle: rawTitle,
+              category,
+              bookTitle,
+              author: row[colIndexes.author] ? String(row[colIndexes.author]).trim() : '',
+              summary: row[colIndexes.summary] ? String(row[colIndexes.summary]).trim() : '',
+              quote: row[colIndexes.quote] ? String(row[colIndexes.quote]).trim() : '',
+              studentThoughts: row[colIndexes.studentThoughts] ? String(row[colIndexes.studentThoughts]).trim() : '',
+              internalization: row[colIndexes.internalization] ? String(row[colIndexes.internalization]).trim() : '',
+              aiAnalysis: row[colIndexes.aiAnalysis] ? String(row[colIndexes.aiAnalysis]).trim() : '',
+              tutoringAdvice: row[colIndexes.tutoringAdvice] ? String(row[colIndexes.tutoringAdvice]).trim() : '',
+              spellingCorrection: row[colIndexes.spellingCorrection] ? String(row[colIndexes.spellingCorrection]).trim() : '',
+              kidFeedback: row[colIndexes.kidFeedback] ? String(row[colIndexes.kidFeedback]).trim() : '',
+              scoreA,
+              scoreB,
+              scoreC,
+              scoreD,
+              totalScore,
+              grade,
+              originalRow: originalRawRow
+            };
+          });
+      }, [cleanData, data, headerInfo, colIndexes, refreshTick]);
+
+      const [selectedItemIndex, setSelectedItemIndex] = useState(null);
+      const [searchQuery, setSearchQuery] = useState('');
+      const [selectedCategory, setSelectedCategory] = useState('전체');
+      const [activeMonthFilter, setActiveMonthFilter] = useState(null);
+      const [listSortOrder, setListSortOrder] = useState('desc');
+      const [trendMetric, setTrendMetric] = useState('total');
+      const [trendSortMode, setTrendSortMode] = useState('session');
+
+      const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+      const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+      const [deleteConfirmIndex, setDeleteConfirmIndex] = useState(null);
+      const [activeTab, setActiveTab] = useState('all');
+
+      const [localIsSyncing, setLocalIsSyncing] = useState(false);
+      const isSyncing = parentIsSyncing !== undefined ? parentIsSyncing : localIsSyncing;
+      const [localLastSyncTime, setLocalLastSyncTime] = useState(() => {
+        const d = new Date();
+        return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}`;
+      });
+      const lastSyncTime = parentSyncTime || localLastSyncTime;
+      const [syncNotice, setSyncNotice] = useState('');
+
+      const latestRecord = useMemo(() => {
+        if (!records || records.length === 0) return null;
+        return [...records].sort((a, b) => {
+          const sA = a.sessionNum || 0;
+          const sB = b.sessionNum || 0;
+          if (sA !== sB) return sB - sA;
+          const tA = a.timestamp || 0;
+          const tB = b.timestamp || 0;
+          if (tA !== tB) return tB - tA;
+          return b.index_ - a.index_;
+        })[0];
+      }, [records]);
+
+      const prevLatestRecordIndexRef = useRef(null);
+
+      const handleManualSync = async () => {
+        setActiveMonthFilter(null);
+        setSelectedCategory('전체');
+        setSearchQuery('');
+        setListSortOrder('desc');
+
+        if (onManualSync) {
+          try {
+            await onManualSync();
+          } catch (e) {
+            console.error('Manual sync failed:', e);
+          }
+          return;
+        }
+
+        setLocalIsSyncing(true);
+        setSyncNotice('');
+        setRefreshTick(prev => prev + 1);
+
+        const d = new Date();
+        const nowStr = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}`;
+        setLocalLastSyncTime(nowStr);
+
+        let targetIndex = null;
+        let targetSession = '';
+        let targetTitle = '';
+        let validCount = 0;
+
+        if (data && Array.isArray(data)) {
+          const validItems = data.filter(item =>
+            item.index_ !== headerInfo.headerRowIndex &&
+            item.row &&
+            item.row.some(c => c !== null && c !== '')
+          );
+          validCount = validItems.length;
+
+          const sorted = [...validItems].sort((a, b) => {
+            const sA = parseInt(String(a.row?.[colIndexes.session] || '').replace(/\D/g, ''), 10) || a.index_;
+            const sB = parseInt(String(b.row?.[colIndexes.session] || '').replace(/\D/g, ''), 10) || b.index_;
+            if (sA !== sB) return sB - sA;
+            return b.index_ - a.index_;
+          });
+
+          if (sorted.length > 0) {
+            targetIndex = sorted[0].index_;
+            targetSession = String(sorted[0].row?.[colIndexes.session] || `${sorted[0].index_}회차`);
+            const rawT = String(sorted[0].row?.[colIndexes.title] || '');
+            targetTitle = rawT.replace(/^\[.*?\]\s*/, '').trim() || rawT;
+          }
+        }
+
+        if (targetIndex !== null) {
+          setSelectedItemIndex(targetIndex);
+        }
+
+        setTimeout(() => {
+          setIsSyncing(false);
+          setSyncNotice(`시트 최신 데이터 실시간 동기화 완료: 총 ${validCount}건 연결됨 (최신: ${targetSession} "${targetTitle}" · ${nowStr})`);
+          setTimeout(() => {
+            setSyncNotice('');
+          }, 3500);
+        }, 200);
+      };
+
+      const prevSignatureRef = useRef('');
+      useEffect(() => {
+        if (!data || !Array.isArray(data)) return;
+        const signature = `${data.length}_${data.map(d => `${d.index_}:${d.row?.[0] || ''}:${d.row?.[2] || ''}:${d.row?.[16] || ''}`).join('|')}`;
+        if (prevSignatureRef.current && prevSignatureRef.current !== signature) {
+          setRefreshTick(t => t + 1);
+          const d = new Date();
+          const nowStr = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}`;
+          setLastSyncTime(nowStr);
+          setSyncNotice(`스프레드시트 최신 변경사항이 즉시 반영되었습니다. (${nowStr})`);
+          setTimeout(() => setSyncNotice(''), 3000);
+        }
+        prevSignatureRef.current = signature;
+      }, [data]);
+
+      useEffect(() => {
+        const onWindowFocus = () => {
+          setRefreshTick(t => t + 1);
+        };
+        window.addEventListener('focus', onWindowFocus);
+        document.addEventListener('visibilitychange', onWindowFocus);
+        return () => {
+          window.removeEventListener('focus', onWindowFocus);
+          document.removeEventListener('visibilitychange', onWindowFocus);
+        };
+      }, []);
+
+      useEffect(() => {
+        if (!records || records.length === 0) {
+          setSelectedItemIndex(null);
+          prevLatestRecordIndexRef.current = null;
+          return;
+        }
+
+        if (!latestRecord) return;
+
+        if (
+          selectedItemIndex === null ||
+          !records.some(r => r.index_ === selectedItemIndex) ||
+          (prevLatestRecordIndexRef.current !== null && prevLatestRecordIndexRef.current !== latestRecord.index_)
+        ) {
+          setSelectedItemIndex(latestRecord.index_);
+        }
+
+        prevLatestRecordIndexRef.current = latestRecord.index_;
+      }, [records, latestRecord, selectedItemIndex]);
+
+      const selectedRecord = useMemo(() => {
+        return records.find(r => r.index_ === selectedItemIndex) || null;
+      }, [records, selectedItemIndex]);
+
+      const categories = useMemo(() => {
+        const set = new Set();
+        records.forEach(r => {
+          if (r.category) set.add(r.category);
+        });
+        return ['전체', ...Array.from(set)];
+      }, [records]);
+
+      const filteredRecords = useMemo(() => {
+        const list = records.filter(r => {
+          if (selectedCategory !== '전체' && r.category !== selectedCategory) return false;
+          if (activeMonthFilter && r.monthKey !== activeMonthFilter) return false;
+          if (searchQuery.trim()) {
+            const q = searchQuery.toLowerCase();
+            const matchTitle = r.bookTitle.toLowerCase().includes(q);
+            const matchAuthor = r.author.toLowerCase().includes(q);
+            const matchSummary = r.summary.toLowerCase().includes(q);
+            const matchThoughts = r.studentThoughts.toLowerCase().includes(q);
+            const matchAI = r.aiAnalysis.toLowerCase().includes(q);
+            if (!matchTitle && !matchAuthor && !matchSummary && !matchThoughts && !matchAI) {
+              return false;
+            }
+          }
+          return true;
+        });
+
+        return list.sort((a, b) => {
+          if (listSortOrder === 'desc') {
+            const timeDiff = (b.timestamp || 0) - (a.timestamp || 0);
+            if (timeDiff !== 0) return timeDiff;
+            const dateComp = (b.rawDate || '').localeCompare(a.rawDate || '');
+            return dateComp !== 0 ? dateComp : b.sessionNum - a.sessionNum;
+          } else {
+            return a.sessionNum - b.sessionNum;
+          }
+        });
+      }, [records, selectedCategory, activeMonthFilter, searchQuery, listSortOrder]);
+
+      const monthlyData = useMemo(() => {
+        const map = {};
+        records.forEach(r => {
+          if (!r.monthKey) return;
+          if (!map[r.monthKey]) {
+            map[r.monthKey] = {
+              monthKey: r.monthKey,
+              label: `${r.year}년 ${r.month}월`,
+              count: 0,
+              books: []
+            };
+          }
+          map[r.monthKey].count += 1;
+          map[r.monthKey].books.push(r.bookTitle);
+        });
+        return Object.values(map).sort((a, b) => a.monthKey.localeCompare(b.monthKey));
+      }, [records]);
+
+      const dailyData = useMemo(() => {
+        const map = {};
+        records.forEach(r => {
+          if (!r.rawDate) return;
+          if (!map[r.rawDate]) {
+            const label = r.month && r.day ? `${r.month}월 ${r.day}일` : r.rawDate;
+            map[r.rawDate] = {
+              dateStr: r.rawDate,
+              label,
+              count: 0,
+              monthKey: r.monthKey,
+              books: []
+            };
+          }
+          map[r.rawDate].count += 1;
+          map[r.rawDate].books.push(r.bookTitle);
+        });
+        return Object.values(map).sort((a, b) => a.dateStr.localeCompare(b.dateStr));
+      }, [records]);
+
+      const peakDayInfo = useMemo(() => {
+        if (!dailyData || dailyData.length === 0) return '기록 없음';
+        const peak = dailyData.reduce((max, d) => (d.count > (max?.count || 0) ? d : max), dailyData[0]);
+        return `${peak.label} (${peak.count}권 완독)`;
+      }, [dailyData]);
+
+      const stats = useMemo(() => {
+        const total = records.length;
+        const internalizedCount = records.filter(
+          r => r.internalization && r.internalization.trim().length > 0 && !r.internalization.includes('미작성')
+        ).length;
+        const rawRate = total > 0 ? (internalizedCount / total) * 100 : 0;
+        const internalizedRate = Number.isInteger(rawRate) ? String(rawRate) : rawRate.toFixed(1);
+        const withFeedbackCount = records.filter(r => r.kidFeedback && r.kidFeedback.trim().length > 0).length;
+
+        const scoredRecords = records.filter(r => r.totalScore !== null);
+        const avgScore = scoredRecords.length > 0
+          ? (scoredRecords.reduce((acc, r) => acc + r.totalScore, 0) / scoredRecords.length).toFixed(1)
+          : '0';
+        const maxScoreRec = scoredRecords.reduce((max, r) => (!max || r.totalScore > max.totalScore ? r : max), null);
+        const maxScore = maxScoreRec ? maxScoreRec.totalScore : null;
+        const maxGrade = maxScoreRec ? maxScoreRec.grade : '-';
+
+        const sessionSorted = [...scoredRecords].sort((a, b) => a.sessionNum - b.sessionNum);
+        const firstScored = sessionSorted.length > 0 ? sessionSorted[0] : null;
+        const lastScored = sessionSorted.length > 0 ? sessionSorted[sessionSorted.length - 1] : null;
+
+        const initialScore = firstScored ? firstScored.totalScore : null;
+        const initialGrade = firstScored ? firstScored.grade : '';
+
+        let scoreGrowthText = '변동 없음';
+        if (firstScored && lastScored && firstScored !== lastScored) {
+          const growth = Math.round((lastScored.totalScore - firstScored.totalScore) * 10) / 10;
+          if (growth > 0) {
+            scoreGrowthText = `+${growth}점 상승 ↑`;
+          } else if (growth < 0) {
+            scoreGrowthText = `${growth}점 하락 ↓`;
+          } else {
+            scoreGrowthText = '0점 (유지)';
+          }
+        }
+
+        const latestDateDisplay = latestRecord
+          ? (latestRecord.month && latestRecord.day ? `${latestRecord.month}월 ${latestRecord.day}일` : latestRecord.rawDate || '기록 없음')
+          : '기록 없음';
+
+        const latestDateShort = latestRecord
+          ? (latestRecord.month && latestRecord.day ? `${latestRecord.month}/${latestRecord.day}` : latestRecord.rawDate || '-')
+          : '-';
+
+        return {
+          total,
+          internalizedRate,
+          internalizedCount,
+          withFeedbackCount,
+          peakDay: peakDayInfo,
+          avgScore,
+          maxScore,
+          maxGrade,
+          topGrade: maxGrade,
+          initialScore,
+          initialGrade,
+          scoreGrowthText,
+          latestDateDisplay,
+          latestDateShort,
+          latestSession: latestRecord ? latestRecord.session : '-',
+          latestDate: latestRecord ? latestRecord.rawDate : '-',
+          latestTitle: latestRecord ? latestRecord.bookTitle : '-',
+          latestScore: latestRecord && latestRecord.totalScore !== null ? `${latestRecord.totalScore}점` : '-',
+          latestGrade: latestRecord && latestRecord.grade ? latestRecord.grade : ''
+        };
+      }, [records, peakDayInfo, latestRecord]);
+
+      const getCategoryTheme = (cat) => {
+        switch (cat) {
+          case '문학':
+            return { bg: 'bg-indigo-50', text: 'text-indigo-700', border: 'border-indigo-200' };
+          case '역사':
+            return { bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200' };
+          case '과학':
+            return { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200' };
+          case '고전/문학':
+          case '고전':
+            return { bg: 'bg-purple-50', text: 'text-purple-700', border: 'border-purple-200' };
+          default:
+            return { bg: 'bg-sky-50', text: 'text-sky-700', border: 'border-sky-200' };
+        }
+      };
+
+      const [formData, setFormData] = useState({
+        session: '',
+        date: '',
+        category: '문학',
+        bookTitle: '',
+        author: '',
+        summary: '',
+        quote: '',
+        studentThoughts: '',
+        internalization: '',
+        aiAnalysis: '',
+        tutoringAdvice: '',
+        spellingCorrection: '',
+        kidFeedback: '',
+        scoreA: '',
+        scoreB: '',
+        scoreC: '',
+        scoreD: '',
+        totalScore: '',
+        grade: ''
+      });
+
+      const openAddModal = () => {
+        const maxSession = records.reduce((max, r) => Math.max(max, r.sessionNum || 0), 0);
+        const nextSessionNum = maxSession > 0 ? maxSession + 1 : records.length + 1;
+        const today = new Date();
+        const y = today.getFullYear();
+        const m = String(today.getMonth() + 1).padStart(2, '0');
+        const d = String(today.getDate()).padStart(2, '0');
+        setFormData({
+          session: `${nextSessionNum}회차`,
+          date: `${y}-${m}-${d}`,
+          category: '문학',
+          bookTitle: '',
+          author: '',
+          summary: '',
+          quote: '',
+          studentThoughts: '',
+          internalization: '',
+          aiAnalysis: '',
+          tutoringAdvice: '',
+          spellingCorrection: '',
+          kidFeedback: '',
+          scoreA: '',
+          scoreB: '',
+          scoreC: '',
+          scoreD: '',
+          totalScore: '',
+          grade: ''
+        });
+        setIsAddModalOpen(true);
+      };
+
+      const openEditModal = (rec) => {
+        if (!rec) return;
+        setFormData({
+          session: rec.session || '',
+          date: rec.rawDate || '',
+          category: rec.category || '문학',
+          bookTitle: rec.bookTitle || '',
+          author: rec.author || '',
+          summary: rec.summary || '',
+          quote: rec.quote || '',
+          studentThoughts: rec.studentThoughts || '',
+          internalization: rec.internalization || '',
+          aiAnalysis: rec.aiAnalysis || '',
+          tutoringAdvice: rec.tutoringAdvice || '',
+          spellingCorrection: rec.spellingCorrection || '',
+          kidFeedback: rec.kidFeedback || '',
+          scoreA: rec.scoreA !== null ? String(rec.scoreA) : '',
+          scoreB: rec.scoreB !== null ? String(rec.scoreB) : '',
+          scoreC: rec.scoreC !== null ? String(rec.scoreC) : '',
+          scoreD: rec.scoreD !== null ? String(rec.scoreD) : '',
+          totalScore: rec.totalScore !== null ? String(rec.totalScore) : '',
+          grade: rec.grade || ''
+        });
+        setIsEditModalOpen(true);
+      };
+
+      const updateFormScores = (field, val) => {
+        setFormData(prev => {
+          const next = { ...prev, [field]: val };
+          const a = parseFloat(field === 'scoreA' ? val : prev.scoreA) || 0;
+          const b = parseFloat(field === 'scoreB' ? val : prev.scoreB) || 0;
+          const c = parseFloat(field === 'scoreC' ? val : prev.scoreC) || 0;
+          const d = parseFloat(field === 'scoreD' ? val : prev.scoreD) || 0;
+          const hasAny = (field === 'scoreA' ? val : prev.scoreA) !== '' ||
+                         (field === 'scoreB' ? val : prev.scoreB) !== '' ||
+                         (field === 'scoreC' ? val : prev.scoreC) !== '' ||
+                         (field === 'scoreD' ? val : prev.scoreD) !== '';
+          if (hasAny) {
+            const sum = Math.round((a + b + c + d) * 10) / 10;
+            next.totalScore = String(sum);
+            if (!prev.grade || ['S', 'A+', 'A', 'B+', 'B', 'C'].includes(prev.grade)) {
+              next.grade = deriveGrade(sum);
+            }
+          }
+          return next;
+        });
+      };
+
+      const handleSaveAdd = () => {
+        const fullTitleStr = `[${formData.category.trim()}] ${formData.bookTitle.trim()}`;
+        const maxCols = Math.max(18, ...Object.values(colIndexes));
+        const newRow = new Array(maxCols + 1).fill(null);
+        newRow[colIndexes.session] = formData.session.trim();
+        newRow[colIndexes.date] = formData.date.trim();
+        newRow[colIndexes.title] = fullTitleStr;
+        newRow[colIndexes.author] = formData.author.trim();
+        newRow[colIndexes.summary] = formData.summary.trim();
+        newRow[colIndexes.quote] = formData.quote.trim();
+        newRow[colIndexes.studentThoughts] = formData.studentThoughts.trim();
+        newRow[colIndexes.internalization] = formData.internalization.trim() || null;
+        newRow[colIndexes.aiAnalysis] = formData.aiAnalysis.trim() || null;
+        newRow[colIndexes.tutoringAdvice] = formData.tutoringAdvice.trim() || null;
+        newRow[colIndexes.spellingCorrection] = formData.spellingCorrection.trim() || null;
+        newRow[colIndexes.kidFeedback] = formData.kidFeedback.trim() || null;
+
+        newRow[colIndexes.scoreA] = formData.scoreA !== '' ? parseFloat(formData.scoreA) : null;
+        newRow[colIndexes.scoreB] = formData.scoreB !== '' ? parseFloat(formData.scoreB) : null;
+        newRow[colIndexes.scoreC] = formData.scoreC !== '' ? parseFloat(formData.scoreC) : null;
+        newRow[colIndexes.scoreD] = formData.scoreD !== '' ? parseFloat(formData.scoreD) : null;
+        newRow[colIndexes.totalScore] = formData.totalScore !== '' ? parseFloat(formData.totalScore) : null;
+        newRow[colIndexes.grade] = formData.grade.trim() || null;
+
+        insertItem(undefined, newRow);
+        setIsAddModalOpen(false);
+      };
+
+      const handleSaveEdit = () => {
+        if (!selectedRecord) return;
+        const fullTitleStr = `[${formData.category.trim()}] ${formData.bookTitle.trim()}`;
+        const maxCols = Math.max(18, selectedRecord.originalRow.length, ...Object.values(colIndexes));
+        const updatedRow = [...selectedRecord.originalRow];
+        while (updatedRow.length < maxCols + 1) {
+          updatedRow.push(null);
+        }
+        updatedRow[colIndexes.session] = formData.session.trim();
+        updatedRow[colIndexes.date] = formData.date.trim();
+        updatedRow[colIndexes.title] = fullTitleStr;
+        updatedRow[colIndexes.author] = formData.author.trim();
+        updatedRow[colIndexes.summary] = formData.summary.trim();
+        updatedRow[colIndexes.quote] = formData.quote.trim();
+        updatedRow[colIndexes.studentThoughts] = formData.studentThoughts.trim();
+        updatedRow[colIndexes.internalization] = formData.internalization.trim() || null;
+        updatedRow[colIndexes.aiAnalysis] = formData.aiAnalysis.trim() || null;
+        updatedRow[colIndexes.tutoringAdvice] = formData.tutoringAdvice.trim() || null;
+        updatedRow[colIndexes.spellingCorrection] = formData.spellingCorrection.trim() || null;
+        updatedRow[colIndexes.kidFeedback] = formData.kidFeedback.trim() || null;
+
+        updatedRow[colIndexes.scoreA] = formData.scoreA !== '' ? parseFloat(formData.scoreA) : null;
+        updatedRow[colIndexes.scoreB] = formData.scoreB !== '' ? parseFloat(formData.scoreB) : null;
+        updatedRow[colIndexes.scoreC] = formData.scoreC !== '' ? parseFloat(formData.scoreC) : null;
+        updatedRow[colIndexes.scoreD] = formData.scoreD !== '' ? parseFloat(formData.scoreD) : null;
+        updatedRow[colIndexes.totalScore] = formData.totalScore !== '' ? parseFloat(formData.totalScore) : null;
+        updatedRow[colIndexes.grade] = formData.grade.trim() || null;
+
+        updateItem(selectedRecord.index_, updatedRow);
+        setIsEditModalOpen(false);
+      };
+
+      const handleDelete = (indexToDelete) => {
+        deleteItem(indexToDelete);
+        setDeleteConfirmIndex(null);
+        if (selectedItemIndex === indexToDelete) {
+          const remaining = records.filter(r => r.index_ !== indexToDelete);
+          setSelectedItemIndex(remaining.length > 0 ? remaining[0].index_ : null);
+        }
+      };
+
+      const clearFilters = () => {
+        setActiveMonthFilter(null);
+        setSelectedCategory('전체');
+        setSearchQuery('');
+      };
+
+      return (
+        <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col antialiased font-sans">
+          {/* Top Header */}
+          <header className="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-wrap items-center justify-between gap-4">
+              <div className="flex items-center gap-3.5">
+                <div className="w-11 h-11 rounded-xl bg-indigo-600 flex items-center justify-center text-white shadow-sm shrink-0">
+                  <GraduationCap className="w-6 h-6" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2.5 flex-wrap">
+                    <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">
+                      독서 & 논술 지도 튜터링 대시보드
+                    </h1>
+                    <span className="px-2.5 py-0.5 text-xs sm:text-sm font-bold rounded-full bg-indigo-100 text-indigo-900">
+                      학생 맞춤 코칭
+                    </span>
+                    {latestRecord && (
+                      <span className="px-2.5 py-0.5 text-xs font-bold rounded-full bg-emerald-100 text-emerald-900 border border-emerald-300 flex items-center gap-1.5 shadow-xs">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                        최신 데이터: {stats.latestSession} ({stats.latestDate})
+                        <span className="text-emerald-700 font-mono text-[11px] ml-0.5 hidden sm:inline">· 동기화 {lastSyncTime}</span>
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-sm font-bold text-slate-700 mt-0.5">
+                    일별·월별 독서 진도 및 4대 영역별 성취 점수·등급 성장 추이 시각화
+                  </p>
+                </div>
+              </div>
+
+              {/* Top Actions */}
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <a
+                  href="https://docs.google.com/spreadsheets/d/1cT7wCoT8aDh01ofDRb5Sh0ANHElVRZSro5TH1-IH6d0/edit?usp=sharing"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1.5 px-3.5 py-2 text-xs sm:text-sm font-bold rounded-lg text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 shadow-xs transition-all active:scale-95 cursor-pointer"
+                  title="구글 스프레드시트 원본 '독후감 이력관리' 새 탭에서 열기"
+                >
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                  <span>구글 시트 열기</span>
+                  <ArrowUpRight className="w-4 h-4 text-emerald-600" />
+                </a>
+
+                <button
+                  type="button"
+                  onClick={handleManualSync}
+                  disabled={isSyncing}
+                  className="flex items-center gap-1.5 px-3.5 py-2 text-xs sm:text-sm font-bold rounded-lg text-indigo-800 bg-white hover:bg-indigo-50 border border-indigo-200 shadow-xs transition-all active:scale-95 cursor-pointer disabled:opacity-60"
+                  title="구글 스프레드시트 최신 데이터 즉시 확인 및 실시간 동기화"
+                >
+                  <RefreshCw className={`w-4 h-4 text-indigo-600 ${isSyncing ? 'animate-spin' : ''}`} />
+                  <span>{isSyncing ? '구글 시트 동기화 중...' : '데이터 동기화 (Sync)'}</span>
+                </button>
+
+                {selectedRecord && latestRecord && selectedRecord.index_ !== latestRecord.index_ && (
+                  <button
+                    onClick={() => setSelectedItemIndex(latestRecord.index_)}
+                    className="flex items-center gap-1.5 px-3 py-2 text-xs sm:text-sm font-bold rounded-lg text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 transition-colors cursor-pointer"
+                    title="가장 최근 입력된 독후감 데이터로 바로 이동"
+                  >
+                    <ArrowUpRight className="w-4 h-4" />
+                    <span>최신 기록({latestRecord.session}) 보기</span>
+                  </button>
+                )}
+                {(activeMonthFilter || selectedCategory !== '전체' || searchQuery) && (
+                  <button
+                    onClick={clearFilters}
+                    className="flex items-center gap-1.5 px-3 py-2 text-sm font-bold rounded-lg text-slate-800 bg-slate-100 hover:bg-slate-200 transition-colors"
+                    title="모든 필터 초기화"
+                  >
+                    <RotateCcw className="w-4 h-4" />
+                    <span>필터 초기화</span>
+                  </button>
+                )}
+                <button
+                  onClick={openAddModal}
+                  className="flex items-center gap-2 px-4 py-2.5 text-sm font-bold rounded-lg text-white bg-indigo-600 hover:bg-indigo-700 shadow-sm transition-all active:scale-95 cursor-pointer"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>새 독후감 등록</span>
+                </button>
+              </div>
+            </div>
+          </header>
+
+          {/* Sync Feedback Toast Banner */}
+          {syncNotice && (
+            <div className="bg-emerald-600 text-white text-xs sm:text-sm font-bold px-4 py-2 shadow-xs transition-all">
+              <div className="max-w-7xl mx-auto flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-200 shrink-0" />
+                  <span>{syncNotice}</span>
+                </div>
+                <button
+                  onClick={() => setSyncNotice('')}
+                  className="p-1 text-emerald-200 hover:text-white rounded transition-colors cursor-pointer"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Main Body Container */}
+          <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-5 space-y-5">
+            {/* KPI Stat Cards */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
+              <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-xs flex items-center gap-3.5">
+                <div className="w-11 h-11 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                  <BookOpen className="w-6 h-6" />
+                </div>
+                <div>
+                  <div className="text-xs sm:text-sm font-bold text-slate-700">누적 독후감 기록</div>
+                  <div className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+                    {stats.total}<span className="text-xs sm:text-sm font-bold text-slate-600 ml-1.5">편 완독</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-xs flex items-center gap-3.5">
+                <div className="w-11 h-11 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                  <Trophy className="w-6 h-6" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="text-xs sm:text-sm font-bold text-slate-700 truncate">
+                    오늘 / 최신 성취 ({stats.latestDateDisplay})
+                  </div>
+                  <div className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-1.5">
+                    <span>{stats.latestScore}</span>
+                    {stats.latestGrade && (
+                      <span className="px-2 py-0.5 text-xs font-black rounded-md bg-emerald-600 text-white">
+                        {stats.latestGrade}등급
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-[11px] font-bold text-slate-500 truncate mt-0.5">
+                    {stats.latestSession} · {stats.latestTitle}
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-xs flex items-center gap-3.5">
+                <div className="w-11 h-11 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
+                  <Activity className="w-6 h-6" />
+                </div>
+                <div>
+                  <div className="text-xs sm:text-sm font-bold text-slate-700">평균 획득 점수</div>
+                  <div className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+                    {stats.avgScore}<span className="text-xs sm:text-sm font-bold text-slate-600 ml-1.5">점 / 100점</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-xs flex items-center gap-3.5">
+                <div className="w-11 h-11 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center shrink-0">
+                  <Lightbulb className="w-6 h-6" />
+                </div>
+                <div>
+                  <div className="text-xs sm:text-sm font-bold text-slate-700">가치 내면화 작성률</div>
+                  <div className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+                    {stats.internalizedRate}<span className="text-xs sm:text-sm font-bold text-slate-600 ml-1.5">% ({stats.internalizedCount}/{stats.total})</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Master-Detail Interactive Work Area */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+              {/* Left Column: Reading Log List */}
+              <div className="lg:col-span-4 xl:col-span-3 space-y-3">
+                <div className="bg-white rounded-xl p-3 border border-slate-200 shadow-xs space-y-2.5">
+                  <div className="relative">
+                    <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+                    <input
+                      type="text"
+                      placeholder="도서명 또는 저자 검색..."
+                      value={searchQuery}
+                      onChange={e => setSearchQuery(e.target.value)}
+                      className="w-full pl-9 pr-8 py-2 text-sm font-semibold bg-slate-50 border border-slate-300 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-indigo-500 focus:bg-white text-slate-900 placeholder:text-slate-500"
+                    />
+                    {searchQuery && (
+                      <button
+                        onClick={() => setSearchQuery('')}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 cursor-pointer"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-sm no-scrollbar">
+                    <span className="text-xs font-extrabold text-slate-700 shrink-0 mr-1 flex items-center gap-1">
+                      <Filter className="w-3 h-3 text-indigo-600" /> 분야:
+                    </span>
+                    {categories.map(cat => (
+                      <button
+                        key={cat}
+                        onClick={() => setSelectedCategory(cat)}
+                        className={`px-2.5 py-1 rounded text-xs font-bold whitespace-nowrap transition-colors cursor-pointer ${
+                          selectedCategory === cat
+                            ? 'bg-slate-900 text-white shadow-xs'
+                            : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                        }`}
+                      >
+                        {cat}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between px-1 text-sm text-slate-800 font-bold">
+                  <div className="flex items-center gap-1.5">
+                    <span>기록 목록 ({filteredRecords.length}권)</span>
+                    <button
+                      type="button"
+                      onClick={handleManualSync}
+                      title="최신 데이터로 동기화"
+                      className="p-1 rounded text-slate-500 hover:text-indigo-600 hover:bg-slate-200 transition-colors cursor-pointer"
+                    >
+                      <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin text-indigo-600' : ''}`} />
+                    </button>
+                  </div>
+                  <div className="flex items-center gap-1 bg-slate-200/80 p-0.5 rounded-md text-xs">
+                    <button
+                      type="button"
+                      onClick={() => setListSortOrder('desc')}
+                      className={`px-2 py-0.5 rounded font-bold transition-colors cursor-pointer ${
+                        listSortOrder === 'desc' ? 'bg-white text-indigo-700 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                      title="최신 기록일 순으로 정렬"
+                    >
+                      최신순
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setListSortOrder('session')}
+                      className={`px-2 py-0.5 rounded font-bold transition-colors cursor-pointer ${
+                        listSortOrder === 'session' ? 'bg-white text-indigo-700 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                      title={`회차 순서(1회차~${records.length}회차)로 정렬`}
+                    >
+                      회차순
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-2 max-h-[calc(100vh-220px)] overflow-y-auto pr-0.5">
+                  {filteredRecords.length === 0 ? (
+                    <div className="bg-white rounded-xl p-6 border border-dashed border-slate-300 text-center space-y-2">
+                      <BookOpen className="w-7 h-7 text-slate-400 mx-auto" />
+                      <div className="text-sm font-bold text-slate-700">조건에 맞는 독서 기록이 없습니다</div>
+                      <button
+                        onClick={clearFilters}
+                        className="text-sm text-indigo-600 hover:underline font-bold cursor-pointer"
+                      >
+                        필터 초기화
+                      </button>
+                    </div>
+                  ) : (
+                    filteredRecords.map(item => {
+                      const isSelected = selectedItemIndex === item.index_;
+                      const theme = getCategoryTheme(item.category);
+                      const gradeTheme = getGradeTheme(item.grade);
+                      const isLatest = latestRecord && item.index_ === latestRecord.index_;
+
+                      return (
+                        <button
+                          key={item.index_}
+                          type="button"
+                          onClick={() => setSelectedItemIndex(item.index_)}
+                          className={`w-full text-left rounded-xl p-3 border transition-all cursor-pointer flex items-center justify-between gap-3 group relative ${
+                            isSelected
+                              ? 'bg-indigo-50/90 border-indigo-600 shadow-sm ring-2 ring-indigo-500/20'
+                              : 'bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50/90'
+                          }`}
+                        >
+                          <div className="min-w-0 flex-1 space-y-1.5">
+                            <div className="flex items-center gap-1.5 text-xs flex-wrap">
+                              <span className="font-extrabold text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded">
+                                {item.session || `${item.index_}회차`}
+                              </span>
+                              <span className="text-slate-600 flex items-center gap-1 font-mono font-bold shrink-0">
+                                <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                                {item.rawDate || '날짜 미상'}
+                              </span>
+                              <span
+                                className={`px-2 py-0.5 rounded font-bold text-xs border shrink-0 ${theme.bg} ${theme.text} ${theme.border}`}
+                              >
+                                {item.category}
+                              </span>
+                              {isLatest && (
+                                <span className="px-2 py-0.5 rounded bg-emerald-600 text-white font-black text-[10px] tracking-wide flex items-center gap-1 shadow-xs">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                                  최신·오늘
+                                </span>
+                              )}
+                            </div>
+
+                            <div
+                              className={`text-sm sm:text-base font-black leading-snug truncate ${
+                                isSelected ? 'text-indigo-950 font-black' : 'text-slate-900 group-hover:text-indigo-700'
+                              }`}
+                              title={item.bookTitle}
+                            >
+                              {item.bookTitle}
+                            </div>
+
+                            <div className="flex items-center gap-2 pt-0.5">
+                              {item.grade && (
+                                <span className={`px-2 py-0.5 rounded text-xs font-black ${gradeTheme.badge}`}>
+                                  {item.grade} 등급
+                                </span>
+                              )}
+                              {item.totalScore !== null && (
+                                <span className="text-xs font-black text-slate-700">
+                                  {item.totalScore}점
+                                </span>
+                              )}
+                              {item.scoreA !== null && (
+                                <span className="text-[11px] font-semibold text-slate-500 hidden sm:inline">
+                                  (이해 {item.scoreA} · 비판 {item.scoreB} · 내면 {item.scoreC} · 표현 {item.scoreD})
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          <ChevronRight
+                            className={`w-5 h-5 shrink-0 transition-transform ${
+                              isSelected ? 'text-indigo-700 translate-x-0.5' : 'text-slate-400 group-hover:text-slate-700'
+                            }`}
+                          />
+                        </button>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+
+              {/* Right Column: Full Side Reading Item Deep-Dive Panel */}
+              <div className="lg:col-span-8 xl:col-span-9">
+                {selectedRecord ? (
+                  <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden sticky top-20 flex flex-col h-[calc(100vh-120px)] min-h-[640px]">
+                    <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white px-5 py-3.5 shrink-0">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2 flex-wrap text-xs mb-1">
+                            {latestRecord && selectedRecord.index_ === latestRecord.index_ && (
+                              <span className="bg-emerald-500 text-white px-2 py-0.5 rounded-md font-black text-xs flex items-center gap-1 shadow-xs">
+                                <CheckCircle2 className="w-3.5 h-3.5" />
+                                최신 등록 항목
+                              </span>
+                            )}
+                            <span className="bg-indigo-500/40 text-indigo-100 border border-indigo-300/40 px-2 py-0.5 rounded font-extrabold">
+                              {selectedRecord.session || '회차 정보'}
+                            </span>
+                            <span className="bg-white/20 text-white px-2 py-0.5 rounded-full font-bold">
+                              {selectedRecord.category}
+                            </span>
+                            <span className="text-slate-200 flex items-center gap-1 font-bold">
+                              <Calendar className="w-3.5 h-3.5 text-slate-300" />
+                              {selectedRecord.rawDate || '날짜 미지정'}
+                            </span>
+                            {selectedRecord.author && (
+                              <span className="text-indigo-200 font-bold border-l border-white/20 pl-2">
+                                저자: <span className="text-white font-extrabold">{selectedRecord.author}</span>
+                              </span>
+                            )}
+                            {selectedRecord.grade && (
+                              <span className={`px-2.5 py-0.5 rounded-full text-xs font-black shadow-sm ${getGradeTheme(selectedRecord.grade).badge}`}>
+                                성취: {selectedRecord.grade}등급 ({selectedRecord.totalScore}점)
+                              </span>
+                            )}
+                          </div>
+                          <h2 className="text-lg sm:text-xl font-black tracking-tight text-white truncate" title={selectedRecord.bookTitle}>
+                            {selectedRecord.bookTitle}
+                          </h2>
+                        </div>
+
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <button
+                            onClick={() => openEditModal(selectedRecord)}
+                            className="p-2 rounded-lg bg-white/15 hover:bg-white/25 text-white transition-colors cursor-pointer"
+                            title="이 기록 수정하기"
+                          >
+                            <Edit3 className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => setDeleteConfirmIndex(selectedRecord.index_)}
+                            className="p-2 rounded-lg bg-rose-500/25 hover:bg-rose-500/35 text-rose-100 transition-colors cursor-pointer"
+                            title="이 기록 삭제하기"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+
+                      {deleteConfirmIndex === selectedRecord.index_ && (
+                        <div className="mt-2.5 p-2.5 bg-rose-950/95 border border-rose-500/50 rounded-lg flex items-center justify-between text-xs text-rose-100 font-bold">
+                          <span>정말 이 독후감 기록을 삭제하시겠습니까?</span>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <button
+                              onClick={() => handleDelete(selectedRecord.index_)}
+                              className="px-2.5 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded-md font-extrabold cursor-pointer"
+                            >
+                              삭제 확인
+                            </button>
+                            <button
+                              onClick={() => setDeleteConfirmIndex(null)}
+                              className="px-2.5 py-1 bg-slate-700 hover:bg-slate-600 text-white rounded-md font-bold cursor-pointer"
+                            >
+                              취소
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="flex items-center gap-1.5 mt-2.5 pt-2 border-t border-white/15 text-xs sm:text-sm overflow-x-auto no-scrollbar">
+                        <button
+                          onClick={() => setActiveTab('all')}
+                          className={`px-2.5 py-1 rounded-md font-bold transition-colors cursor-pointer whitespace-nowrap ${
+                            activeTab === 'all'
+                              ? 'bg-white text-slate-900 shadow-xs'
+                              : 'text-slate-200 hover:text-white hover:bg-white/10'
+                          }`}
+                        >
+                          전체 보기
+                        </button>
+                        <button
+                          onClick={() => setActiveTab('scores')}
+                          className={`px-2.5 py-1 rounded-md font-bold transition-colors cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+                            activeTab === 'scores'
+                              ? 'bg-white text-slate-900 shadow-xs'
+                              : 'text-slate-200 hover:text-white hover:bg-white/10'
+                          }`}
+                        >
+                          <Target className="w-3.5 h-3.5 text-indigo-500" />
+                          성취 점수 & 등급
+                        </button>
+                        <button
+                          onClick={() => setActiveTab('written')}
+                          className={`px-2.5 py-1 rounded-md font-bold transition-colors cursor-pointer whitespace-nowrap ${
+                            activeTab === 'written'
+                              ? 'bg-white text-slate-900 shadow-xs'
+                              : 'text-slate-200 hover:text-white hover:bg-white/10'
+                          }`}
+                        >
+                          학생 작성 원문
+                        </button>
+                        <button
+                          onClick={() => setActiveTab('ai')}
+                          className={`px-2.5 py-1 rounded-md font-bold transition-colors cursor-pointer whitespace-nowrap ${
+                            activeTab === 'ai'
+                              ? 'bg-white text-slate-900 shadow-xs'
+                              : 'text-slate-200 hover:text-white hover:bg-white/10'
+                          }`}
+                        >
+                          AI 심층 강점 분석
+                        </button>
+                        <button
+                          onClick={() => setActiveTab('feedback')}
+                          className={`px-2.5 py-1 rounded-md font-bold transition-colors cursor-pointer whitespace-nowrap ${
+                            activeTab === 'feedback'
+                              ? 'bg-white text-slate-900 shadow-xs'
+                              : 'text-slate-200 hover:text-white hover:bg-white/10'
+                          }`}
+                        >
+                          지도 코멘트 & 교정
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="p-6 sm:p-7 space-y-7 flex-1 overflow-y-auto">
+                      {(activeTab === 'all' || activeTab === 'scores') && (
+                        <div className="space-y-4">
+                          <div className="flex items-center justify-between pb-2.5 border-b-2 border-slate-200">
+                            <div className="flex items-center gap-2">
+                              <Target className="w-5 h-5 text-indigo-600" />
+                              <h3 className="text-base font-extrabold text-slate-900">4대 독서 역량 평가 지표 및 성취 등급</h3>
+                            </div>
+                            {selectedRecord.grade && (
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs font-extrabold text-slate-600">성취도 판정:</span>
+                                <span className={`px-2.5 py-0.5 rounded-full text-xs font-black ${getGradeTheme(selectedRecord.grade).badge}`}>
+                                  {selectedRecord.grade} 등급
+                                </span>
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                            <div className="col-span-2 sm:col-span-1 bg-gradient-to-br from-indigo-50 to-indigo-100/70 border border-indigo-200 rounded-xl p-3.5 flex flex-col justify-between shadow-xs">
+                              <div>
+                                <span className="text-xs font-extrabold text-indigo-800">종합 총점</span>
+                                <div className="text-2xl sm:text-3xl font-black text-indigo-950 mt-1">
+                                  {selectedRecord.totalScore !== null ? selectedRecord.totalScore : '-'}
+                                  <span className="text-xs font-bold text-indigo-700 ml-1">/ 100</span>
+                                </div>
+                              </div>
+                              <div className="mt-2 pt-2 border-t border-indigo-200/80 flex items-center justify-between text-xs">
+                                <span className="font-bold text-indigo-800">성취 등급</span>
+                                <span className={`px-2 py-0.5 rounded text-xs font-black ${getGradeTheme(selectedRecord.grade).badge}`}>
+                                  {selectedRecord.grade || '-'}
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 flex flex-col justify-between">
+                              <div>
+                                <div className="flex items-center justify-between text-xs mb-1">
+                                  <span className="font-extrabold text-indigo-900">A. 텍스트 이해</span>
+                                  <span className="font-black text-indigo-700">
+                                    {selectedRecord.scoreA !== null ? selectedRecord.scoreA : '-'} / 25
+                                  </span>
+                                </div>
+                                <div className="w-full bg-slate-200 rounded-full h-2 overflow-hidden mt-1.5">
+                                  <div
+                                    className="bg-indigo-600 h-full rounded-full transition-all duration-500"
+                                    style={{ width: `${Math.min(100, ((selectedRecord.scoreA || 0) / 25) * 100)}%` }}
+                                  />
+                                </div>
+                              </div>
+                              <p className="text-[11px] text-slate-500 font-semibold mt-2">사건 순서 및 핵심 요약</p>
+                            </div>
+
+                            <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 flex flex-col justify-between">
+                              <div>
+                                <div className="flex items-center justify-between text-xs mb-1">
+                                  <span className="font-extrabold text-sky-900">B. 비판적 사고</span>
+                                  <span className="font-black text-sky-700">
+                                    {selectedRecord.scoreB !== null ? selectedRecord.scoreB : '-'} / 25
+                                  </span>
+                                </div>
+                                <div className="w-full bg-slate-200 rounded-full h-2 overflow-hidden mt-1.5">
+                                  <div
+                                    className="bg-sky-600 h-full rounded-full transition-all duration-500"
+                                    style={{ width: `${Math.min(100, ((selectedRecord.scoreB || 0) / 25) * 100)}%` }}
+                                  />
+                                </div>
+                              </div>
+                              <p className="text-[11px] text-slate-500 font-semibold mt-2">복선 간파 및 대안 제시</p>
+                            </div>
+
+                            <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 flex flex-col justify-between">
+                              <div>
+                                <div className="flex items-center justify-between text-xs mb-1">
+                                  <span className="font-extrabold text-purple-900">C. 가치 내면화</span>
+                                  <span className="font-black text-purple-700">
+                                    {selectedRecord.scoreC !== null ? selectedRecord.scoreC : '-'} / 25
+                                  </span>
+                                </div>
+                                <div className="w-full bg-slate-200 rounded-full h-2 overflow-hidden mt-1.5">
+                                  <div
+                                    className="bg-purple-600 h-full rounded-full transition-all duration-500"
+                                    style={{ width: `${Math.min(100, ((selectedRecord.scoreC || 0) / 25) * 100)}%` }}
+                                  />
+                                </div>
+                              </div>
+                              <p className="text-[11px] text-slate-500 font-semibold mt-2">삶과의 연결 및 태도 변화</p>
+                            </div>
+
+                            <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 flex flex-col justify-between">
+                              <div>
+                                <div className="flex items-center justify-between text-xs mb-1">
+                                  <span className="font-extrabold text-amber-900">D. 표현 정밀도</span>
+                                  <span className="font-black text-amber-700">
+                                    {selectedRecord.scoreD !== null ? selectedRecord.scoreD : '-'} / 25
+                                  </span>
+                                </div>
+                                <div className="w-full bg-slate-200 rounded-full h-2 overflow-hidden mt-1.5">
+                                  <div
+                                    className="bg-amber-600 h-full rounded-full transition-all duration-500"
+                                    style={{ width: `${Math.min(100, ((selectedRecord.scoreD || 0) / 25) * 100)}%` }}
+                                  />
+                                </div>
+                              </div>
+                              <p className="text-[11px] text-slate-500 font-semibold mt-2">어휘 구사 및 문장 정확성</p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {(activeTab === 'all' || activeTab === 'written') && (
+                        <div className="space-y-4">
+                          <div className="flex items-center gap-2 pb-2.5 border-b-2 border-slate-200">
+                            <PenTool className="w-5 h-5 text-indigo-600" />
+                            <h3 className="text-base font-extrabold text-slate-900">학생 작성 원문 (독후감)</h3>
+                          </div>
+
+                          <div className="bg-slate-50 rounded-xl p-4 border border-slate-200">
+                            <div className="flex items-center gap-1.5 text-sm font-extrabold text-slate-800 mb-2">
+                              <Bookmark className="w-4 h-4 text-indigo-600" />
+                              줄거리 요약
+                            </div>
+                            <p className="text-sm font-semibold text-slate-800 leading-relaxed whitespace-pre-line">
+                              {selectedRecord.summary || '작성된 줄거리 요약이 없습니다.'}
+                            </p>
+                          </div>
+
+                          {selectedRecord.quote && (
+                            <div className="bg-amber-50/70 rounded-xl p-4 border border-amber-200">
+                              <div className="flex items-center gap-1.5 text-sm font-extrabold text-amber-950 mb-2">
+                                <Quote className="w-4 h-4 text-amber-700" />
+                                인상 깊은 문장
+                              </div>
+                              <p className="text-sm sm:text-base font-serif italic font-bold text-amber-950 leading-relaxed pl-3 border-l-4 border-amber-400">
+                                {selectedRecord.quote}
+                              </p>
+                            </div>
+                          )}
+
+                          <div className="bg-slate-50 rounded-xl p-4 border border-slate-200">
+                            <div className="flex items-center gap-1.5 text-sm font-extrabold text-slate-800 mb-2">
+                              <FileText className="w-4 h-4 text-indigo-600" />
+                              학생 작성 느낀 점
+                            </div>
+                            <p className="text-sm font-semibold text-slate-800 leading-relaxed whitespace-pre-line">
+                              {selectedRecord.studentThoughts || '작성된 느낀 점이 없습니다.'}
+                            </p>
+                          </div>
+
+                          {(() => {
+                            const isInternalized = Boolean(
+                              selectedRecord.internalization &&
+                              selectedRecord.internalization.trim().length > 0 &&
+                              !selectedRecord.internalization.includes('미작성')
+                            );
+
+                            return (
+                              <div
+                                className={`rounded-xl p-4 border ${
+                                  isInternalized
+                                    ? 'bg-purple-50/70 border-purple-300'
+                                    : 'bg-amber-50/60 border-amber-300 border-dashed'
+                                }`}
+                              >
+                                <div className="flex items-center justify-between mb-2">
+                                  <div className="flex items-center gap-1.5 text-sm font-extrabold text-slate-900">
+                                    <Lightbulb className="w-4 h-4 text-purple-600" />
+                                    나의 생각 / 달라진 점 (내면화)
+                                  </div>
+                                  {!isInternalized && (
+                                    <span className="text-xs text-amber-900 font-extrabold bg-amber-200 px-2.5 py-0.5 rounded">
+                                      공란 / 미작성 (지도 권장)
+                                    </span>
+                                  )}
+                                </div>
+                                {isInternalized ? (
+                                  <p className="text-sm sm:text-base font-bold text-purple-950 leading-relaxed">
+                                    {selectedRecord.internalization}
+                                  </p>
+                                ) : (
+                                  <div className="space-y-1">
+                                    <p className="text-sm font-bold text-amber-900">
+                                      {selectedRecord.internalization || '아직 작성되지 않은 항목입니다.'}
+                                    </p>
+                                    <p className="text-xs font-semibold text-amber-700">
+                                      책을 읽고 내 삶이나 행동에 적용할 점을 함께 지도해주세요.
+                                    </p>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })()}
+                        </div>
+                      )}
+
+                      {(activeTab === 'all' || activeTab === 'ai') && (
+                        <div className="space-y-3.5 pt-2">
+                          <div className="flex items-center gap-2 pb-2.5 border-b-2 border-indigo-200">
+                            <Sparkles className="w-5 h-5 text-indigo-600" />
+                            <h3 className="text-base font-extrabold text-indigo-950">AI 심층 강점 분석 리포트</h3>
+                            <span className="text-xs font-extrabold bg-indigo-100 text-indigo-800 px-2.5 py-0.5 rounded-full ml-auto">
+                              사고력·표현력 진단
+                            </span>
+                          </div>
+
+                          <div className="bg-gradient-to-br from-indigo-50/90 via-white to-sky-50/90 rounded-xl p-5 border border-indigo-200 shadow-xs relative overflow-hidden">
+                            <div className="flex items-start gap-3.5">
+                              <div className="w-9 h-9 rounded-lg bg-indigo-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                                <Sparkles className="w-5 h-5" />
+                              </div>
+                              <div className="space-y-2">
+                                <div className="text-sm font-extrabold text-indigo-950">핵심 독서 강점 진단</div>
+                                <p className="text-sm sm:text-base text-slate-900 leading-relaxed font-bold">
+                                  {selectedRecord.aiAnalysis || '등록된 AI 강점 분석 내용이 없습니다.'}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {(activeTab === 'all' || activeTab === 'feedback') && (
+                        <div className="space-y-4 pt-2">
+                          <div className="flex items-center gap-2 pb-2.5 border-b-2 border-slate-200">
+                            <UserCheck className="w-5 h-5 text-emerald-600" />
+                            <h3 className="text-base font-extrabold text-slate-900">튜터 맞춤형 지도 & 피드백</h3>
+                          </div>
+
+                          {selectedRecord.tutoringAdvice && (
+                            <div className="bg-sky-50/80 rounded-xl p-4 sm:p-5 border border-sky-300 space-y-2">
+                              <div className="flex items-center gap-2 text-sm font-extrabold text-sky-950">
+                                <Award className="w-4 h-4 text-sky-600" />
+                                지도 조언 및 보완점 가이드
+                              </div>
+                              <p className="text-sm sm:text-base font-bold text-slate-900 leading-relaxed pl-1">
+                                {selectedRecord.tutoringAdvice}
+                              </p>
+                            </div>
+                          )}
+
+                          {selectedRecord.spellingCorrection && (
+                            <div className="bg-rose-50/70 rounded-xl p-4 sm:p-5 border border-rose-300 space-y-2">
+                              <div className="flex items-center justify-between text-sm font-extrabold text-rose-950">
+                                <div className="flex items-center gap-2">
+                                  <Edit3 className="w-4 h-4 text-rose-600" />
+                                  맞춤법 & 문장 정밀 교정
+                                </div>
+                                <span className="text-xs font-bold text-rose-800 bg-rose-100 px-2 py-0.5 rounded">첨삭 제안</span>
+                              </div>
+                              <div className="text-sm sm:text-base font-bold text-slate-900 leading-relaxed bg-white p-3 rounded-lg border border-rose-200 font-mono">
+                                {selectedRecord.spellingCorrection}
+                              </div>
+                            </div>
+                          )}
+
+                          {selectedRecord.kidFeedback && (
+                            <div className="bg-emerald-50/80 rounded-xl p-4 sm:p-5 border border-emerald-300 space-y-2">
+                              <div className="flex items-center gap-2 text-sm font-extrabold text-emerald-950">
+                                <MessageSquare className="w-4 h-4 text-emerald-600" />
+                                아이 피드백 코멘트 (학생에게 전하는 말)
+                              </div>
+                              <div className="relative bg-white p-3.5 rounded-lg border border-emerald-200 text-sm sm:text-base font-extrabold text-slate-900 leading-relaxed font-sans">
+                                <span className="text-emerald-600 font-serif text-xl leading-none mr-1.5 font-black">“</span>
+                                {selectedRecord.kidFeedback}
+                                <span className="text-emerald-600 font-serif text-xl leading-none ml-1.5 font-black">”</span>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="p-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-sm shrink-0 font-bold">
+                      <span className="text-slate-800 font-bold">
+                        전체 {records.length}편 중 {selectedRecord.session || `${selectedRecord.index_}번째 기록`}
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => openEditModal(selectedRecord)}
+                          className="px-4 py-2 text-sm font-bold rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-colors cursor-pointer"
+                        >
+                          내용 수정하기
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="bg-white rounded-xl border border-slate-200 p-12 text-center text-slate-700 space-y-2.5">
+                    <BookOpen className="w-12 h-12 mx-auto text-slate-400" />
+                    <div className="text-base font-extrabold text-slate-800">독후감 항목을 선택해주세요</div>
+                    <p className="text-sm font-bold text-slate-600 max-w-sm mx-auto">
+                      왼쪽 목록에서 책을 선택하면 학생 작성 원문과 AI 심층 강점 분석, 지도 조언을 한눈에 확인할 수 있습니다.
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Score & Grade Trends Chart Section */}
+            <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-xs space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2 bg-indigo-600 text-white rounded-lg shadow-xs">
+                    <TrendingUp className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h2 className="text-base sm:text-lg font-black text-slate-900">
+                        독서 역량 성취 점수 & 등급 성장 추이 (Score & Grade Growth Trends)
+                      </h2>
+                      <span className="px-2 py-0.5 text-xs font-black bg-indigo-100 text-indigo-900 rounded-full">
+                        실시간 동기화
+                      </span>
+                    </div>
+                    <p className="text-xs sm:text-sm font-semibold text-slate-600">
+                      시간 경과에 따른 지표별 점수와 성취 등급(S, A+, A, B+)의 점진적 변화 추이를 시각화합니다. (포인트 클릭 시 해당 도서 상세 표시)
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 flex-wrap">
+                  <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-lg text-xs font-bold">
+                    <button
+                      type="button"
+                      onClick={() => setTrendMetric('total')}
+                      className={`px-2.5 py-1 rounded-md transition-colors cursor-pointer ${
+                        trendMetric === 'total' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-700 hover:bg-slate-200'
+                      }`}
+                    >
+                      총점 (100점)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setTrendMetric('all4')}
+                      className={`px-2.5 py-1 rounded-md transition-colors cursor-pointer ${
+                        trendMetric === 'all4' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-700 hover:bg-slate-200'
+                      }`}
+                    >
+                      4대 영역 종합
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setTrendMetric('scoreA')}
+                      className={`px-2.5 py-1 rounded-md transition-colors cursor-pointer hidden md:inline-block ${
+                        trendMetric === 'scoreA' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-700 hover:bg-slate-200'
+                      }`}
+                    >
+                      이해
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setTrendMetric('scoreB')}
+                      className={`px-2.5 py-1 rounded-md transition-colors cursor-pointer hidden md:inline-block ${
+                        trendMetric === 'scoreB' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-700 hover:bg-slate-200'
+                      }`}
+                    >
+                      비판
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setTrendMetric('scoreC')}
+                      className={`px-2.5 py-1 rounded-md transition-colors cursor-pointer hidden md:inline-block ${
+                        trendMetric === 'scoreC' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-700 hover:bg-slate-200'
+                      }`}
+                    >
+                      내면화
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setTrendMetric('scoreD')}
+                      className={`px-2.5 py-1 rounded-md transition-colors cursor-pointer hidden md:inline-block ${
+                        trendMetric === 'scoreD' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-700 hover:bg-slate-200'
+                      }`}
+                    >
+                      표현
+                    </button>
+                  </div>
+
+                  <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-lg text-xs font-bold">
+                    <button
+                      type="button"
+                      onClick={() => setTrendSortMode('session')}
+                      className={`px-2 py-1 rounded-md transition-colors cursor-pointer ${
+                        trendSortMode === 'session' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:bg-slate-200'
+                      }`}
+                      title={`회차 순서(1회차~${records.length}회차)로 정렬`}
+                    >
+                      회차 기준
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setTrendSortMode('date')}
+                      className={`px-2 py-1 rounded-md transition-colors cursor-pointer ${
+                        trendSortMode === 'date' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:bg-slate-200'
+                      }`}
+                      title="일자(날짜 시간순)로 정렬"
+                    >
+                      일자 기준
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="w-full h-72 sm:h-80 relative">
+                <ScoreGradeTrendChart
+                  records={records}
+                  selectedItemIndex={selectedItemIndex}
+                  onSelectItem={(idx) => setSelectedItemIndex(idx)}
+                  metric={trendMetric}
+                  sortMode={trendSortMode}
+                />
+              </div>
+
+              <div className="pt-3 border-t border-slate-200 grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs sm:text-sm font-bold text-slate-700">
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
+                  <span>기초 시작점: <strong className="text-slate-900">{stats.initialScore !== null ? `${stats.initialScore}점` : '-'}{stats.initialGrade ? ` (${stats.initialGrade})` : ''}</strong></span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+                  <span>최고 도달 성취: <strong className="text-slate-900">{stats.maxScore !== null ? `${stats.maxScore}점` : '-'}{stats.maxGrade ? ` (${stats.maxGrade}등급)` : ''}</strong></span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-indigo-500" />
+                  <span>점수 성장폭: <strong className="text-indigo-700">{stats.scoreGrowthText}</strong></span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-purple-500" />
+                  <span>최근({stats.latestDateShort}): <strong className="text-purple-700">{stats.latestScore} {stats.latestGrade ? `${stats.latestGrade}등급 ` : ''}반영</strong></span>
+                </div>
+              </div>
+            </div>
+
+            {/* Monthly Progress Section */}
+            <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-xs">
+              <div className="flex items-center justify-between mb-3.5">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2 bg-indigo-50 text-indigo-600 rounded-lg">
+                    <BarChart3 className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h2 className="text-base font-extrabold text-slate-900">월별 독서 진도 현황</h2>
+                      <span className="text-xs font-bold text-slate-500">(월간 완독 권수)</span>
+                    </div>
+                    <p className="text-sm font-bold text-slate-600">막대를 클릭하여 해당 월의 독서 기록만 필터링할 수 있습니다.</p>
+                  </div>
+                </div>
+                {activeMonthFilter && (
+                  <button
+                    onClick={() => setActiveMonthFilter(null)}
+                    className="text-xs font-bold bg-indigo-50 text-indigo-800 hover:bg-indigo-100 border border-indigo-300 px-3 py-1.5 rounded-full flex items-center gap-1 transition-colors cursor-pointer"
+                  >
+                    <span>{activeMonthFilter} 필터 해제</span>
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+
+              <div className="h-36 w-full relative">
+                <MonthlyBarChart
+                  data={monthlyData}
+                  activeFilter={activeMonthFilter}
+                  onSelectMonth={(monthKey) => {
+                    setActiveMonthFilter(prev => (prev === monthKey ? null : monthKey));
+                  }}
+                />
+              </div>
+
+              <div className="mt-3 pt-2.5 border-t border-slate-200 flex items-center justify-between text-sm font-bold text-slate-700">
+                <span>총 {monthlyData.length}개 활동 월</span>
+                <span>월평균 완독량: {monthlyData.length > 0 ? (stats.total / monthlyData.length).toFixed(1) : '0.0'}권</span>
+              </div>
+            </div>
+          </main>
+
+          {/* MODAL: Edit Record */}
+          {isEditModalOpen && (
+            <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
+              <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] flex flex-col shadow-2xl border border-slate-200 overflow-hidden">
+                <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+                  <div className="flex items-center gap-2.5">
+                    <Edit3 className="w-5 h-5 text-indigo-600" />
+                    <h3 className="text-lg font-black text-slate-900">독후감 & 지도 내용 수정</h3>
+                  </div>
+                  <button
+                    onClick={() => setIsEditModalOpen(false)}
+                    className="p-1.5 rounded-lg text-slate-700 hover:text-slate-900 hover:bg-slate-200 transition-colors cursor-pointer"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <div className="p-6 overflow-y-auto space-y-4 text-sm font-semibold">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+                    <div>
+                      <label className="block font-bold text-slate-800 mb-1.5">회차</label>
+                      <input
+                        type="text"
+                        value={formData.session}
+                        onChange={e => setFormData({ ...formData, session: e.target.value })}
+                        className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-bold focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                        placeholder="예: 1회차"
+                      />
+                    </div>
+                    <div>
+                      <label className="block font-bold text-slate-800 mb-1.5">기록일</label>
+                      <input
+                        type="date"
+                        value={formData.date}
+                        onChange={e => setFormData({ ...formData, date: e.target.value })}
+                        className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-bold focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block font-bold text-slate-800 mb-1.5">분류</label>
+                      <input
+                        type="text"
+                        value={formData.category}
+                        onChange={e => setFormData({ ...formData, category: e.target.value })}
+                        className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-bold focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                        placeholder="예: 문학, 역사, 과학"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                    <div>
+                      <label className="block font-bold text-slate-800 mb-1.5">도서명</label>
+                      <input
+                        type="text"
+                        value={formData.bookTitle}
+                        onChange={e => setFormData({ ...formData, bookTitle: e.target.value })}
+                        className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-bold focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                        placeholder="도서 제목 입력"
+                      />
+                    </div>
+                    <div>
+                      <label className="block font-bold text-slate-800 mb-1.5">저자</label>
+                      <input
+                        type="text"
+                        value={formData.author}
+                        onChange={e => setFormData({ ...formData, author: e.target.value })}
+                        className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-bold focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                        placeholder="저자명 입력"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-slate-800 mb-1.5">줄거리 요약</label>
+                    <textarea
+                      rows={3}
+                      value={formData.summary}
+                      onChange={e => setFormData({ ...formData, summary: e.target.value })}
+                      className="w-full px-3 py-2.5 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-medium leading-relaxed focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                      placeholder="학생이 작성한 줄거리"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-slate-800 mb-1.5">인상 깊은 문장</label>
+                    <input
+                      type="text"
+                      value={formData.quote}
+                      onChange={e => setFormData({ ...formData, quote: e.target.value })}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-medium focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                      placeholder="인상 깊은 구절이나 대사"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                    <div>
+                      <label className="block font-bold text-slate-800 mb-1.5">학생 작성 느낀 점</label>
+                      <textarea
+                        rows={3}
+                        value={formData.studentThoughts}
+                        onChange={e => setFormData({ ...formData, studentThoughts: e.target.value })}
+                        className="w-full px-3 py-2.5 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-medium leading-relaxed focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block font-bold text-slate-800 mb-1.5">나의 생각 / 달라진 점 (내면화)</label>
+                      <textarea
+                        rows={3}
+                        value={formData.internalization}
+                        onChange={e => setFormData({ ...formData, internalization: e.target.value })}
+                        className="w-full px-3 py-2.5 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-medium leading-relaxed focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                        placeholder="공란인 경우 보완 지도 가능"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="pt-3 border-t-2 border-slate-200">
+                    <div className="font-black text-indigo-950 mb-2.5 text-base flex items-center justify-between">
+                      <span className="flex items-center gap-2">
+                        <Target className="w-4 h-4 text-indigo-600" /> 4대 평가 지표 점수 및 성취 등급
+                      </span>
+                      {formData.totalScore && (
+                        <span className="text-xs font-black px-2.5 py-0.5 rounded-md bg-indigo-600 text-white">
+                          총점: {formData.totalScore}점 ({formData.grade || '등급'})
+                        </span>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      <div>
+                        <label className="block font-bold text-slate-800 text-xs mb-1">A.텍스트이해 (25점)</label>
+                        <input
+                          type="number"
+                          step="0.5"
+                          min="0"
+                          max="25"
+                          value={formData.scoreA}
+                          onChange={e => updateFormScores('scoreA', e.target.value)}
+                          className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-bold focus:ring-2 focus:ring-indigo-500"
+                          placeholder="0~25"
+                        />
+                      </div>
+                      <div>
+                        <label className="block font-bold text-slate-800 text-xs mb-1">B.비판적사고 (25점)</label>
+                        <input
+                          type="number"
+                          step="0.5"
+                          min="0"
+                          max="25"
+                          value={formData.scoreB}
+                          onChange={e => updateFormScores('scoreB', e.target.value)}
+                          className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-bold focus:ring-2 focus:ring-indigo-500"
+                          placeholder="0~25"
+                        />
+                      </div>
+                      <div>
+                        <label className="block font-bold text-slate-800 text-xs mb-1">C.가치내면화 (25점)</label>
+                        <input
+                          type="number"
+                          step="0.5"
+                          min="0"
+                          max="25"
+                          value={formData.scoreC}
+                          onChange={e => updateFormScores('scoreC', e.target.value)}
+                          className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-bold focus:ring-2 focus:ring-indigo-500"
+                          placeholder="0~25"
+                        />
+                      </div>
+                      <div>
+                        <label className="block font-bold text-slate-800 text-xs mb-1">D.표현정밀도 (25점)</label>
+                        <input
+                          type="number"
+                          step="0.5"
+                          min="0"
+                          max="25"
+                          value={formData.scoreD}
+                          onChange={e => updateFormScores('scoreD', e.target.value)}
+                          className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-bold focus:ring-2 focus:ring-indigo-500"
+                          placeholder="0~25"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3 mt-3">
+                      <div>
+                        <label className="block font-bold text-slate-800 text-xs mb-1">총점 (100점 만점)</label>
+                        <input
+                          type="number"
+                          step="0.5"
+                          value={formData.totalScore}
+                          onChange={e => setFormData({ ...formData, totalScore: e.target.value })}
+                          className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-black focus:ring-2 focus:ring-indigo-500"
+                          placeholder="자동 합산"
+                        />
+                      </div>
+                      <div>
+                        <label className="block font-bold text-slate-800 text-xs mb-1">성취 등급</label>
+                        <input
+                          type="text"
+                          value={formData.grade}
+                          onChange={e => setFormData({ ...formData, grade: e.target.value })}
+                          className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-black focus:ring-2 focus:ring-indigo-500"
+                          placeholder="S, A+, A, B+ 등"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="pt-3 border-t-2 border-slate-200">
+                    <div className="font-black text-indigo-950 mb-2.5 text-base flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 text-indigo-600" /> AI 분석 및 지도 첨삭 입력
+                    </div>
+                    <div className="space-y-3.5">
+                      <div>
+                        <label className="block font-bold text-slate-800 mb-1.5">AI 심층 강점 분석</label>
+                        <textarea
+                          rows={3}
+                          value={formData.aiAnalysis}
+                          onChange={e => setFormData({ ...formData, aiAnalysis: e.target.value })}
+                          className="w-full px-3 py-2.5 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-medium leading-relaxed focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block font-bold text-slate-800 mb-1.5">지도 조언 및 보완점</label>
+                        <textarea
+                          rows={3}
+                          value={formData.tutoringAdvice}
+                          onChange={e => setFormData({ ...formData, tutoringAdvice: e.target.value })}
+                          className="w-full px-3 py-2.5 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-medium leading-relaxed focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                        />
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                        <div>
+                          <label className="block font-bold text-slate-800 mb-1.5">맞춤법/문장 교정</label>
+                          <input
+                            type="text"
+                            value={formData.spellingCorrection}
+                            onChange={e => setFormData({ ...formData, spellingCorrection: e.target.value })}
+                            className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-medium focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                            placeholder="예: 괴짝→궤짝, 임펙트→임팩트"
+                          />
+                        </div>
+                        <div>
+                          <label className="block font-bold text-slate-800 mb-1.5">아이 피드백 코멘트</label>
+                          <input
+                            type="text"
+                            value={formData.kidFeedback}
+                            onChange={e => setFormData({ ...formData, kidFeedback: e.target.value })}
+                            className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-medium focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                            placeholder="따뜻한 격려 한마디"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex items-center justify-end gap-3">
+                  <button
+                    onClick={() => setIsEditModalOpen(false)}
+                    className="px-4 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-200 rounded-lg transition-colors cursor-pointer"
+                  >
+                    취소
+                  </button>
+                  <button
+                    onClick={handleSaveEdit}
+                    className="px-5 py-2.5 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-sm transition-colors cursor-pointer"
+                  >
+                    변경사항 저장
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* MODAL: Add New Record */}
+          {isAddModalOpen && (
+            <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
+              <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] flex flex-col shadow-2xl border border-slate-200 overflow-hidden">
+                <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+                  <div className="flex items-center gap-2.5">
+                    <Plus className="w-5 h-5 text-indigo-600" />
+                    <h3 className="text-lg font-black text-slate-900">새 독후감 및 튜터링 기록 추가</h3>
+                  </div>
+                  <button
+                    onClick={() => setIsAddModalOpen(false)}
+                    className="p-1.5 rounded-lg text-slate-700 hover:text-slate-900 hover:bg-slate-200 transition-colors cursor-pointer"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <div className="p-6 overflow-y-auto space-y-4 text-sm font-semibold">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+                    <div>
+                      <label className="block font-bold text-slate-800 mb-1.5">회차</label>
+                      <input
+                        type="text"
+                        value={formData.session}
+                        onChange={e => setFormData({ ...formData, session: e.target.value })}
+                        className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-bold focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                        placeholder="예: 9회차"
+                      />
+                    </div>
+                    <div>
+                      <label className="block font-bold text-slate-800 mb-1.5">기록일</label>
+                      <input
+                        type="date"
+                        value={formData.date}
+                        onChange={e => setFormData({ ...formData, date: e.target.value })}
+                        className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-bold focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block font-bold text-slate-800 mb-1.5">분류</label>
+                      <input
+                        type="text"
+                        value={formData.category}
+                        onChange={e => setFormData({ ...formData, category: e.target.value })}
+                        className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-bold focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                        placeholder="문학 / 역사 / 과학"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                    <div>
+                      <label className="block font-bold text-slate-800 mb-1.5">도서명 *</label>
+                      <input
+                        type="text"
+                        value={formData.bookTitle}
+                        onChange={e => setFormData({ ...formData, bookTitle: e.target.value })}
+                        className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-bold focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                        placeholder="도서 제목을 입력하세요"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block font-bold text-slate-800 mb-1.5">저자</label>
+                      <input
+                        type="text"
+                        value={formData.author}
+                        onChange={e => setFormData({ ...formData, author: e.target.value })}
+                        className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-bold focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                        placeholder="저자명"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-slate-800 mb-1.5">줄거리 요약</label>
+                    <textarea
+                      rows={3}
+                      value={formData.summary}
+                      onChange={e => setFormData({ ...formData, summary: e.target.value })}
+                      className="w-full px-3 py-2.5 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-medium leading-relaxed focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                      placeholder="학생이 요약한 줄거리"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-slate-800 mb-1.5">인상 깊은 문장</label>
+                    <input
+                      type="text"
+                      value={formData.quote}
+                      onChange={e => setFormData({ ...formData, quote: e.target.value })}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-medium focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                      placeholder="가장 마음에 남은 구절"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                    <div>
+                      <label className="block font-bold text-slate-800 mb-1.5">학생 작성 느낀 점</label>
+                      <textarea
+                        rows={3}
+                        value={formData.studentThoughts}
+                        onChange={e => setFormData({ ...formData, studentThoughts: e.target.value })}
+                        className="w-full px-3 py-2.5 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-medium leading-relaxed focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                        placeholder="학생이 느낀 점"
+                      />
+                    </div>
+                    <div>
+                      <label className="block font-bold text-slate-800 mb-1.5">나의 생각 / 달라진 점</label>
+                      <textarea
+                        rows={3}
+                        value={formData.internalization}
+                        onChange={e => setFormData({ ...formData, internalization: e.target.value })}
+                        className="w-full px-3 py-2.5 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-medium leading-relaxed focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                        placeholder="삶에 적용할 점 (내면화)"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="pt-3 border-t-2 border-slate-200">
+                    <div className="font-black text-indigo-950 mb-2.5 text-base flex items-center justify-between">
+                      <span className="flex items-center gap-2">
+                        <Target className="w-4 h-4 text-indigo-600" /> 4대 평가 지표 점수 및 성취 등급
+                      </span>
+                      {formData.totalScore && (
+                        <span className="text-xs font-black px-2.5 py-0.5 rounded-md bg-indigo-600 text-white">
+                          총점: {formData.totalScore}점 ({formData.grade || '등급'})
+                        </span>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      <div>
+                        <label className="block font-bold text-slate-800 text-xs mb-1">A.텍스트이해 (25점)</label>
+                        <input
+                          type="number"
+                          step="0.5"
+                          min="0"
+                          max="25"
+                          value={formData.scoreA}
+                          onChange={e => updateFormScores('scoreA', e.target.value)}
+                          className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-bold focus:ring-2 focus:ring-indigo-500"
+                          placeholder="0~25"
+                        />
+                      </div>
+                      <div>
+                        <label className="block font-bold text-slate-800 text-xs mb-1">B.비판적사고 (25점)</label>
+                        <input
+                          type="number"
+                          step="0.5"
+                          min="0"
+                          max="25"
+                          value={formData.scoreB}
+                          onChange={e => updateFormScores('scoreB', e.target.value)}
+                          className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-bold focus:ring-2 focus:ring-indigo-500"
+                          placeholder="0~25"
+                        />
+                      </div>
+                      <div>
+                        <label className="block font-bold text-slate-800 text-xs mb-1">C.가치내면화 (25점)</label>
+                        <input
+                          type="number"
+                          step="0.5"
+                          min="0"
+                          max="25"
+                          value={formData.scoreC}
+                          onChange={e => updateFormScores('scoreC', e.target.value)}
+                          className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-bold focus:ring-2 focus:ring-indigo-500"
+                          placeholder="0~25"
+                        />
+                      </div>
+                      <div>
+                        <label className="block font-bold text-slate-800 text-xs mb-1">D.표현정밀도 (25점)</label>
+                        <input
+                          type="number"
+                          step="0.5"
+                          min="0"
+                          max="25"
+                          value={formData.scoreD}
+                          onChange={e => updateFormScores('scoreD', e.target.value)}
+                          className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-bold focus:ring-2 focus:ring-indigo-500"
+                          placeholder="0~25"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3 mt-3">
+                      <div>
+                        <label className="block font-bold text-slate-800 text-xs mb-1">총점 (100점 만점)</label>
+                        <input
+                          type="number"
+                          step="0.5"
+                          value={formData.totalScore}
+                          onChange={e => setFormData({ ...formData, totalScore: e.target.value })}
+                          className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-black focus:ring-2 focus:ring-indigo-500"
+                          placeholder="자동 합산"
+                        />
+                      </div>
+                      <div>
+                        <label className="block font-bold text-slate-800 text-xs mb-1">성취 등급</label>
+                        <input
+                          type="text"
+                          value={formData.grade}
+                          onChange={e => setFormData({ ...formData, grade: e.target.value })}
+                          className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-black focus:ring-2 focus:ring-indigo-500"
+                          placeholder="S, A+, A, B+ 등"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="pt-3 border-t-2 border-slate-200">
+                    <div className="font-black text-indigo-950 mb-2.5 text-base flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 text-indigo-600" /> AI 분석 및 지도 첨삭 입력
+                    </div>
+                    <div className="space-y-3.5">
+                      <div>
+                        <label className="block font-bold text-slate-800 mb-1.5">AI 심층 강점 분석</label>
+                        <textarea
+                          rows={3}
+                          value={formData.aiAnalysis}
+                          onChange={e => setFormData({ ...formData, aiAnalysis: e.target.value })}
+                          className="w-full px-3 py-2.5 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-medium leading-relaxed focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                          placeholder="사건 요약력, 비평력 등 강점 기술"
+                        />
+                      </div>
+                      <div>
+                        <label className="block font-bold text-slate-800 mb-1.5">지도 조언 및 보완점</label>
+                        <textarea
+                          rows={3}
+                          value={formData.tutoringAdvice}
+                          onChange={e => setFormData({ ...formData, tutoringAdvice: e.target.value })}
+                          className="w-full px-3 py-2.5 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-medium leading-relaxed focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                          placeholder="다음 지도를 위한 조언"
+                        />
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                        <div>
+                          <label className="block font-bold text-slate-800 mb-1.5">맞춤법/문장 교정</label>
+                          <input
+                            type="text"
+                            value={formData.spellingCorrection}
+                            onChange={e => setFormData({ ...formData, spellingCorrection: e.target.value })}
+                            className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-medium focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                            placeholder="예: 괴짝→궤짝"
+                          />
+                        </div>
+                        <div>
+                          <label className="block font-bold text-slate-800 mb-1.5">아이 피드백 코멘트</label>
+                          <input
+                            type="text"
+                            value={formData.kidFeedback}
+                            onChange={e => setFormData({ ...formData, kidFeedback: e.target.value })}
+                            className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-medium focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                            placeholder="학생에게 전하는 따뜻한 응원"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex items-center justify-end gap-3">
+                  <button
+                    onClick={() => setIsAddModalOpen(false)}
+                    className="px-4 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-200 rounded-lg transition-colors cursor-pointer"
+                  >
+                    취소
+                  </button>
+                  <button
+                    onClick={handleSaveAdd}
+                    disabled={!formData.bookTitle.trim()}
+                    className={`px-5 py-2.5 text-sm font-bold text-white rounded-lg shadow-sm transition-colors cursor-pointer ${
+                      formData.bookTitle.trim()
+                        ? 'bg-indigo-600 hover:bg-indigo-700'
+                        : 'bg-slate-300 cursor-not-allowed'
+                    }`}
+                  >
+                    독후감 등록
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // --- Ground Truth Data from Google Spreadsheet ('독후감 이력관리') ---
+    const INITIAL_REAL_DATA = [
+  {
+    "index_": 0,
+    "row": [
+      "회차",
+      "기록일",
+      "분류/도서명",
+      "저자",
+      "줄거리 요약",
+      "인상 깊은 문장",
+      "학생 작성 느낀 점",
+      "나의 생각/달라진 점",
+      "AI 심층 강점 분석",
+      "지도 조언 및 보완점",
+      "맞춤법/문장 교정",
+      "아이 피드백 코멘트",
+      "A.텍스트이해(25점)",
+      "B.비판적사고(25점)",
+      "C.가치내면화(25점)",
+      "D.표현정밀도(25점)",
+      "총점(100점)",
+      "성취등급"
+    ]
+  },
+  {
+    "index_": 1,
+    "row": [
+      "1회차",
+      "2026-09-07",
+      "[문학] 귀신 사냥꾼이 간다",
+      "신현림",
+      "태주는 동생 태희와 할머니 집으로 갔다. 태주는 주변 박물관에 들러 이무라는 친구도 만났다. 밤에 집으로 돌아와 창밖을 보는데 태호가 이상한 요괴와 돈을 거래하는 것을 보았다. 다음 날 태호는 돈을 펑펑 썼다. 태주는 태호가 있는 요괴 사냥꾼에 가입해 궤짝 요괴를 잡아 태희와 태주는 요괴 사냥단에 계속 있도록 한다.",
+      "\"분명히 태희의 목소리였다. 목소리가 들렸다. 절대 잘못 들은 게 아니다.\"",
+      "요괴를 부르는 아이들의 사연이 구체적이고 공감된다. 전개가 박진감 넘치고 귀신 사냥꾼이라는 독특한 주제로 펼쳐진 이야기가 오싹오싹하고 재밌었다. 태희를 불러 구하는 장면이 좋았다.",
+      "(미작성 - 보완 필요)",
+      "핵심 사건 중심의 군더더기 없는 요약력. '사연이 구체적이고 공감된다', '전개가 박진감 넘친다' 등 수준 높은 문학적 감상 어휘 구사.",
+      "장면이 좋았다'에 그치지 않고 왜 좋았는지 이유 구체화하기. 비어 있는 마지막 항목(내면화) 채우기 연습.",
+      "괴짝→궤짝, 야괴→요괴, 사냥군→사냥꾼. 문장 종결 어미 통일.",
+      "줄거리를 사건 순서대로 깔끔하게 정리했고, '사연이 구체적이고 공감된다' 같은 어휘 표현력이 아주 훌륭해! 태희를 구하는 장면이 왜 좋았는지 이유를 한 줄 더하고, 태호의 행동을 보며 든 내 생각을 적어보면 더욱 깊이 있는 글이 될 거야.",
+      22,
+      21,
+      12,
+      19,
+      74,
+      "B+"
+    ]
+  },
+  {
+    "index_": 2,
+    "row": [
+      "2회차",
+      "2026-09-09",
+      "[문학] 괴담특공대",
+      "사토 미도리",
+      "밤 12시, 유튜브에 이상한 영상이 하나 올라온다. 내용은 곧 죽음의 멜로디가 들려오고 사람들이 아플 거라는 내용을 얘기하는 거다. 친구들은 이 동영상을 올린 미래인 J에게 관심을 가졌고 나조노는 이 사건이 실종된 아버지와 관련 있다고 생각했다. 그러던 도중 린이라는 전학생이 들어온다. 나조노는 사건들을 해결하며 미래인 J 이지마 린이 되고 미래인 J=린이라는 사실을 알아냈다. 그리고 미카를 납치했다.",
+      "\"내 이름은 미래인 J. 나는 이제부터 일어날 무서운 사건을 예언할 수 있다. 이제 곧 '죽음의 멜로디'가 울려 퍼지고 사람들이 고통에 몸부림치리라!\"",
+      "처음에 미래인이 무섭게 예언하는 장면이 임펙트 있었는데 좀 뒤에 곱슬머리+잘생김+착한 속성을 가진 린이 나오자마자 얘가 흑막인걸 알아차렸다. 미래인 J가 사실은 린이었다는 게 큰 반전인데 너무 쉽게 알아챈 게 아쉬웠다. 우리 학교에 100여 명의 전학생이 왔다고 해놓고 사실은 그 전학생 중 누군가가 미래인이다 가 훨씬 나은 것 같다. 그리고 추가로 미래인 J를 애너그램하면 이지마 린이 되는데 로컬라이징을 잘했다고 생각한다.",
+      "(미작성 - 보완 필요)",
+      "초5 수준을 뛰어넘는 비평가 시각. 캐릭터 속성을 통한 흑막 간파, 100명 전학생 설정이라는 창작적 대안 플롯 제시, '애너그램'과 '로컬라이징' 등 번역과 메타 언어의 정확한 활용.",
+      "뛰어난 기법 비평 능력을 현실의 문제의식(가짜 뉴스, 유튜브 공포 조장 등)과 인간 본성 탐구로 확장하기. 2회 연속 공란인 '내면화' 항목 집중 지도.",
+      "관심이 가졌고→관심을 가졌고, 임펙트→임팩트, 아쉬었다→아쉬웠다, 결말부 주어 생략 보완.",
+      "흑막', '애너그램', '로컬라이징' 같은 어휘를 능숙하게 쓰고, 작가의 복선을 간파해 더 나은 스토리 대안까지 제시한 점은 거의 전문 비평가 수준이야! 미래인 J처럼 공포를 이용해 관심을 끄는 유튜브 문화에 대해 어떻게 생각하는지 마지막 칸에 한 줄만 덧붙여보면 완벽해질 거야.",
+      23,
+      25,
+      12,
+      20,
+      80,
+      "A"
+    ]
+  },
+  {
+    "index_": 3,
+    "row": [
+      "3회차",
+      "2026-08-18",
+      "[역사] 칭기즈칸",
+      "위인전",
+      "1162년경, 몽골 부족의 족장 예수게이의 아들이 태어난다. 이름은 테무친. 그러나 테무친이 어렸을 때 아버지 예수게이가 타타르 부족에게 독살당하고 만다. 부족민들은 테무친의 가족들을 버리고 떠났다. 테무친은 물고기를 훔친 형제를 죽이기도 했다. 테무진은 옹칸에게 찾아갔다. 자무카와 동맹을 맺어 세력을 확장시켰다. 자무카와 뜻이 달라 헤어졌지만, 테무친은 신분 사회를 깨고 능력이 중요시되는 사회를 만들어 넓은 땅을 차지했다. 그리고 칭기즈칸이 되었다.",
+      "\"뒤로 나온 형제를 죽이다니 너희는 사람의 새끼가 아니다. 제 그림자에 덤벼드는 송골매처럼, 제 뒤꿈치를 물어뜯는 승냥이처럼, 너희는 형제의 하나밖에 없는 목숨을 끊어 놓았다.\"",
+      "칭기즈칸은 이름 뜻이 위대하다 + 왕으로 위대한 왕이라는 칭호를 받았다. 이처럼 칭기즈칸은 몽골 역사 하면 빼놓을 수 없는 인물이다. 그런데, 이런 칭기즈칸도 고생했던 시절이 있는 걸 보고 사람은 누구나 밑바닥까지 떨어져서 내가 떨어졌다고 좌절하지 말고, 조금 기다리면 올라가는 것을 느낄 수 있다.",
+      "나도 칭기즈칸처럼 멋지다.",
+      "칭기즈칸의 성공 요인을 '신분 사회를 깨고 능력이 중요시되는 사회를 만들었다'는 핵심 제도 개혁으로 짚어낸 역사적 통찰력. 어머니 호엘룬의 질책 문장을 골라 영웅의 비정한 이면까지 입체적으로 응시. 회복탄력성 교훈 도출.",
+      "나도 칭기즈칸처럼 멋지다'에서 어떤 점(고난을 견딘 끈기, 능력 중심의 공정함 등)을 본받고 싶은지 구체적 덕목과 연결하기.",
+      "신문 사회→신분 사회, 국가지아갔다→찾아갔다 글씨 정밀도 주의, 문맥 호응 다듬기.",
+      "칭기즈칸이 땅을 넓힐 수 있었던 비결을 '신분 대신 능력을 중요하게 여긴 사회를 만든 것'으로 정확히 짚어낸 부분이 정말 대단해! 밑바닥에 떨어져도 포기하지 않는 끈기를 배운 것도 멋져. 다음에는 칭기즈칸의 어떤 행동이나 모습을 닮아 멋진 사람이 되고 싶은지 한 문장만 더 구체적으로 적어보자!",
+      24,
+      23,
+      20,
+      19,
+      86,
+      "A+"
+    ]
+  },
+  {
+    "index_": 4,
+    "row": [
+      "4회차",
+      "2026-08-18",
+      "[고전/문학] 서유기 6",
+      "박상민 (원작 오승은)",
+      "서쪽으로 불경을 찾으러 가던 삼장법사와 그의 제자들은 주지국이라는 나라에 도착했다. 그곳의 왕은 공주가 납치되어서 슬퍼하고 있었다. 손오공은 당장 새태세라는 요괴로 달려갔지만 새태세는 태산을 뒤흔드는 방울을 쓰며 손오공을 어렵게 만들었다. 손오공은 솜털을 뽑아 개미도 만들고 새태세의 등 뒤에 붙였다. 그리고 새태세가 공주한테 등에 벌레를 잡아달라고 했다. 손오공은 재빨리 시녀로 변해 방울을 뺏었다.",
+      "\"첫 번째는 금방울 세 개요, 회전하면서 그것을 흔들면 불길이 삼천 척 늘어나 치솟아 사람들을 모조리 태워 죽이오!\"",
+      "손오공이 등을 가렵게 하여 옷에 붙어있는 방울을 떼어내는 재주가 재밌었다. 느낀 점이 이게 끝이다. 더 쓰고 싶은데 어떡하라고ㅠㅠ 왕이 슬퍼 보였다. 새태세가 강해 보였다. 그저 이런 손오공이 똑똑했다.",
+      "나도 창의력을 키워서 여러 재주를 발전시키고 싶다.",
+      "도술 대결의 핵심 트릭(개미 변신, 시녀 변장)을 정확히 포착. 단순 사건 나열형 서사에서 감상을 심화하는 단계를 느끼고 더 쓰고 싶어 하는 솔직한 성장 욕구 발현.",
+      "손오공의 도술을 '단순한 힘'이 아닌 '상대의 약점을 파고드는 창의적 문제 해결력'으로 재해석하여 현실의 삶과 연결하도록 유도하기.",
+      "삼진적→삼천 척, 남게되어서→납치되어서, 배는→첫 번째는.",
+      "손오공의 지혜를 재미있게 잘 읽었구나! 솔직하게 '더 쓰고 싶은데 어떡하라고' 쓴 모습이 너무 귀엽고 기특해. 손오공처럼 힘이 아닌 지혜와 창의력으로 어려운 문제를 푸는 사람이 되고 싶다는 결론이 아주 멋져!",
+      22,
+      18,
+      18,
+      18,
+      76,
+      "B+"
+    ]
+  },
+  {
+    "index_": 5,
+    "row": [
+      "5회차",
+      "2026-08-18",
+      "[역사] 용선생 세계사 (당나라 멸망)",
+      "이희진",
+      "당 태종이 정복 전쟁을 활발하게 펼치며 점점 땅을 넓혀 가고 있었다. 그리고 당나라의 제도는 아시아 전역으로 퍼지기 시작했다. 하지만 소금 전매를 해 소금의 가격이 지나치게 높아지기 시작했다. 이에 백성들이 황소의 난을 일으켰다. 다행히 반란은 진압되었지만, 모든 게 절도사의 힘이었고 절도사의 권력은 나날이 높아지면서 결국 절도사가 당나라를 멸망시키고 황제가 되었다.",
+      "\"황소는 평등을 내세워 가난한 사람들에게 인심을 얻었어. 그리고 그 힘으로 당나라에 불만을 가진 사람을 끌어 모으며 7년이나 중국 곳곳을 들쑤시고 다녔지.\"",
+      "정치에서는 아무도 믿을 사람이 없다고 느꼈다! 절도사는 황소의 난을 진압해 당나라를 구했지만 곧바로 당나라를 멸망시키고 황제가 되었다. 사실 당나라가 멸망한 이유는 나쁜 정치 때문이다. 그러니 황소의 난도 일어나지 않았을 거고 평화롭게 당나라를 유지시켰을 것이다. 내가 왕이 되면 나는 순수하고 아름답고 따뜻하고 좋은 정치를 할 것이다.",
+      "인물들에게 배신을 당하지 말고 배신은 되도록이면 하지 않는 게 좋을 것 같다.",
+      "소금 전매제(경제 실정) → 농민 반란(황소의 난) → 군벌(절도사) 득세 → 왕조 멸망이라는 거시적·구조적 인과관계를 완벽히 정리. 대입 인문논술 수준의 권력과 정치 본질 탐구.",
+      "순수하고 따뜻한 정치'가 구체적으로 어떤 원칙(공정한 조세, 백성의 기본권 보장 등)인지 구체화하는 연습.",
+      "나쁜 정치를 할 것이다→좋은 정치를 할 것이다(부모 첨삭), 절도시의→절도사의.",
+      "소금 전매와 농민 반란, 절도사의 배신으로 이어지는 복잡한 역사의 인과관계를 이렇게 명쾌하게 꿰뚫어 보다니 대단해! 권력의 비정함을 간파하고 '좋은 정치'를 고민한 멋진 논술이야.",
+      25,
+      24,
+      21,
+      20,
+      90,
+      "S"
+    ]
+  },
+  {
+    "index_": 6,
+    "row": [
+      "6회차",
+      "2026-08-18",
+      "[문학] 안녕, 나의 우주",
+      "오시은",
+      "주인이는 섬에서 아빠와 살고 있었다. 고모는 아빠 관을 놓고 육지로 가자 했는데 주인이는 거절했다. 주인이는 친한 친구 기적이와 동굴 탐험을 하려고 갔다. 거기서 이름 모를 남자를 발견했다. 경비 아저씨가 남자가 삼촌이라고 둘러댔다. 알고 보니 남자는 외계에서 온 외계인이었다. 남자는 집으로 돌아가야 했고 주인이는 좋아하지 않았지만 결국에는 둘 다 작별 인사를 해야 할 시간이었다.",
+      "\"내가 자리에서 일어나자 그가 엉거주춤 따라 일어났다. 하지만 나는 그를 내버려 두고 계단을 내려왔다. 발밑에서 철제 계단이 부서졌으면 좋겠다고 생각했다. 그가 영원히 옥상에서 내려오지 못하도록.\"",
+      "이 책의 주제는 외계인과 우주에 관한 것이 아니라 소중한 것과 이별해야 하는 주인이의 마음인 것 같다. 주인이는 고모, 아빠, 기적이, 남자와 떠났다. 글의 제목인 '안녕, 나의 우주'도 '안녕'이라는 말처럼 삶에 대해 작별을 고하고 있는 것 같다.",
+      "(미작성 - 보완 필요)",
+      "초등 5학년이라고 믿기 힘든 문학적 직관과 메타 은유 분석! SF적 외피(외계인) 이면의 '상실과 애도' 심층 주제 장악. 제목 '안녕'의 중의성(만남과 작별)을 포착한 것은 고등 국어 상위 1% 수준의 독해력.",
+      "소중한 존재와의 이별 감정에 깊이 공감했으므로, \"나에게 가장 소중한 존재를 떠나보내야 한다면 어떤 마음일까?\"를 마지막 칸에 연결하도록 유도.",
+      "유상에서→옥상에서, 영원이→영원히, 주인이든 좋아요는→주인이는 좋아하지는.",
+      "외계인 이야기가 아니라 소중한 것과 이별하는 마음이 주제'라고 꿰뚫어 보고, '안녕'의 작별 의미를 찾아낸 건 정말 소름 돋을 정도로 뛰어난 문학적 감각이야! 겉으로 보이는 이야기 너머의 진짜 의미를 찾아낸 점이 대단해.",
+      25,
+      25,
+      14,
+      21,
+      85,
+      "A+"
+    ]
+  },
+  {
+    "index_": 7,
+    "row": [
+      "7회차",
+      "2026-08-18",
+      "[과학] 태양계가 200쪽의 책이라면",
+      "마커스 초운",
+      "태양계는 사람에 비해서 어마어마하게 크다. 그래서 축소판이라 해도 모형을 제작하는 건 쉽지 않다. 그러나 이 책은 그걸 이루어 냈다. 빈 공간은 글씨로 채워넣으며 태양권에 대해 설명했다.",
+      "\"자신과 주변에 대해서 호기심을 갖고 탐구하게 합니다. '우리는 어디서 왔는가? 우리는 무엇인가? 우리는 어디로 가는가?'\"",
+      "태양계의 비주얼을 직접 비율에 맞게 책으로 만들었다는 게 재밌었다. 태양은 무려 6페이지이지만 수성은 점만 하고 소행성들은 대부분 아예 보이지 않는다. 이 책은 태양계에 대해서 완벽하게 설명했다. 가격이 아깝지 않다.",
+      "우주에 대해서 탐험하고 싶다.",
+      "천문학의 '스케일(비율/거리)' 개념을 책의 물리적 판형과 연결하여 독창적으로 이해. 고갱의 철학적 질문을 포착하여 과학과 인문학의 접점을 인식.",
+      "우주의 광대함 속에서 작은 존재인 인간의 의미에 대해 생각해보는 과학철학적 글쓰기로 확장 유도.",
+      "6퍼이기지만→6페이지이지만, 수성은 알만하고→수성은 점만 하고.",
+      "우주의 엄청난 크기를 책의 비율로 비교하며 읽어낸 과학적 감각이 훌륭해! '가격이 아깝지 않다'는 솔직한 서평과 철학적인 문장을 포착한 안목이 아주 멋져.",
+      23,
+      22,
+      19,
+      20,
+      84,
+      "A"
+    ]
+  },
+  {
+    "index_": 8,
+    "row": [
+      "8회차",
+      "2026-08-16",
+      "[과학] 과학탐정 수학여행",
+      "사토 미도리",
+      "2반 친구들은 교토로 수학여행을 떠났다. 여관 근처에서 죽은 이가 되살아나 다리를 찾았는데, 소녀가 햄스터를 데리고 재밌는 것이라고 해서 파고 봤다. 또 2반 친구들은 절로 갔다. 절에는 귀신 말을 들을 수 있는 불상이 있었는데, 진짜 대답을 했다. 그때 절을 없애고 아파트를 지으려 하는 구로다라는 자가 나타났다. 죽은 이가 더 세져서 한 짓이라고 꾸며 귀신놀이를 시작했다. 하지만 나조노 신지쓰가 등장해 구로다는 이것은 다 사람이 한 짓이라고 궤변을 떨었으나 사람이 한 짓으로 밝혀졌다. \"내 땅은 그 누구에게도 넘겨주지 않을 겁니다!\"",
+      "\"내 땅은 그 누구에게도 넘겨주지 않을 겁니다!!\"",
+      "일상에 있는 모든 수수께끼가 다 과학으로 설명이 된다는 게 놀라웠다. 우리 집에서도 선풍기가 자꾸 꺼지고 창문이 저절로 닫히지 않는 점을 나조노 신지쓰도 과학적인 설명을 해줄 수 있을 것 같다. 이 책에서 나온 과학 지식도 알고 싶다.",
+      "주변 수수께끼도 과학적으로 분석해 봐야겠다.",
+      "비과학적 미신/조작극을 과학적 합리주의로 규명하는 서사를 정확히 이해하고, 이를 '우리 집 일상 현상(선풍기, 창문)'으로 직접 연결한 뛰어난 탐구적 태도 내면화.",
+      "일상 속 호기심을 실제 과학적 원리(기압 차, 마찰력 등)를 적용해보는 소보고서 형식으로 발전시켜 볼 것.",
+      "수소께끼도→수수께끼도, 파고 받아→파고 봤다.",
+      "책 속 과학 원리를 우리 집 선풍기와 창문 현상으로 바로 연결해 생각한 게 정말 훌륭해! 일상의 모든 것을 과학적으로 관찰하겠다는 다짐이 과학자 같아.",
+      22,
+      21,
+      23,
+      20,
+      86,
+      "A+"
+    ]
+  },
+  {
+    "index_": 9,
+    "row": [
+      "9회차",
+      "2026-09-10",
+      "[역사] 용선생 세계사 (이슬람의 탄생)",
+      "이희진",
+      "세계에서 신도 수가 두 번째로 많은 종교를 대부분의 사람들이 불교라 생각하지만, 이슬람교에 미치지 못한다. 주인공인 아랍인들은 상업으로 부유해졌다. 하지만 부자가 많아진 만큼 빈곤층도 늘어났다. 이슬람교의 창시자인 무함마드는 '왜 사람들은 서로 싸우기만 할까?'라고 생각했다. 혼자 명상에 잠겨있는 무함마드 앞에 갑자기 가브리엘 천사가 나타나 알라를 믿고 따라야 한다고 했다. 메디나에서는 바로 움마라는 종교 공동체를 만들어 무함마드를 지도자로 모셨다고 한다.",
+      "\"무함마드의 진실한 모습에 감동한 놀랍게도 기적이 일어났단다. 동굴에서 혼자 잠겨 있던 무함마드 앞에 갑자기 글씨가 적힌 비단 천이 휘리릭 펼쳐지더니 눈앞에 '가브리엘'이 나타난 거야!!\"",
+      "종교는 많은 사람을 통해 형성하는 것이고 종교일 수 있기 때문이다. 그처럼 종교가 다르면 역시 투쟁과 싸움이 일어날 수 있는 법이다. 하지만 종교가 다르다고 해서 차별하면 안 된다. 어떤 사람이 무엇을 믿는다는 이유만으로 분리하면 안 된다.",
+      "남을 차별하지 말자.",
+      "상업 번영과 빈부격차라는 사회경제적 배경 속에서 종교가 탄생한 맥락 완벽 포착. '움마' 개념어 활용. 종교적 관용(Tolerance)과 차별 반대 윤리 자발적 도출.",
+      "느낀 점 첫 문장의 주어-서술어 호응 다듬기. '남을 차별하지 말자'를 일상생활의 구체적 배려로 확장하기.",
+      "빈곤공→빈곤층, 분리하면→차별하거나 배제하면.",
+      "상업 번영과 빈부격차라는 사회적 배경 속에서 이슬람교가 탄생한 이유를 완벽하게 파악했네! '움마'라는 어려운 역사 용어도 정확히 썼어. 특히 '어떤 종교를 믿는다는 이유로 사람을 차별하거나 갈라놓으면 안 된다'는 생각은 어른들도 꼭 배워야 할 훌륭한 마음이야. 나와 생각이 다른 친구를 존중하는 멋진 사람이 될 수 있을 거야!",
+      25,
+      24,
+      23,
+      19,
+      91,
+      "S"
+    ]
+  },
+  {
+    "index_": 10,
+    "row": [
+      "10회차",
+      "2026-09-15",
+      "[역사] 용선생 세계사 (봉건 제도와 서프랑크)",
+      "이희진",
+      "이민족들의 잦은 침략 때문에 왕은 나라 전체를 체계적으로 다스릴 능력이 없었다. 그래서 봉건 제도가 유럽에서 자리잡게 되었다. 봉건 제도는 왕 > 성직자 > 기사 > 농노 가 위에게 세금과 충성을 바치고 농사할 땅을 조금씩 나눠준다. 유럽의 대표적인 나라인 서프랑크(프랑스)가 왕이 후손이 없이 세상을 떠났다. 이때 귀족들은 의견을 나눠 카페 백작을 왕으로 뽑았다. 여러 의견을 나눠 선출한 것은 귀족들의 힘이 엇비슷하고 중간에 영국 왕도 있기 때문이다.",
+      "\"하지만 아무리 힘들다고 해도 농노만 했을까? 농노는 새벽부터 밤늦게까지 온종일 일만 했어. 일주일에 2~3일을 자기가 가진 땅뿐 아니라 영주와 교회의 땅에서 일해야 했기 때문에 잠시도 쉴 틈이 없었지.\"",
+      "신분제는 사람이 할 수 있는 범위를 제한해서 정말 나쁘다. 노력하면 높은 사람도 될 수 있고 노력하지 않으면 밑이 안 되기 때문에 신분제를 하지 말자. 그럼에도 불구하고 과거 다양한 나라에서 신분제를 사용했다. 태어날 때부터 신분이 정해져 있다는 말은 다 거짓이다.",
+      "나중엔 나만의 나라를 세워 모두가 평등하고, 노력하면 성공할 수 있는 사회주의 공화국을 세우지 말까 하다가 세울 것이다.",
+      "이민족 침략에 따른 봉건제 형성 및 귀족 세력 균형에 의한 왕 선출 등 역사적 인과관계 파악 완벽. 신분제 이데올로기 비판 및 평등과 노력의 가치 도출.",
+      "사회주의'와 '공화국', '자본주의' 등 정치·경제 체제의 개념적 차이를 명확히 구분해주고, '기회의 평등'과 '결과의 평등'에 대해 생각해보도록 유도하기.",
+      "제안에서→제한해서, 본진 제도→봉건 제도, 마치고→바치고.",
+      "왕권 약화와 봉건제 성립의 원인을 꿰뚫어 본 역사적 통찰이 대단해! '모두가 평등하고 노력하면 성공할 수 있는 나라'를 꿈꾸는 초원이의 포부가 멋져.",
+      25,
+      24,
+      24,
+      20,
+      93,
+      "S"
+    ]
+  },
+  {
+    "index_": 11,
+    "row": [
+      "11회차",
+      "2026-09-17",
+      "[문학] 상계동 아이들",
+      "노경실",
+      "형일이는 오늘도 열심히 춤을 췄다. 광고, 가수, 탤런트, 무엇이든 아이들 흉내를 냈다. 노래랑 춤추는 것만은 한번 보면 절대 잊어버리지 않는다. 그때 종칠이가 박수를 치며 형일이 옆에 섰다. 종칠이는 돈을 줄 테니까 무당 흉내를 내 보라고 했다. 그러자 엄마가 무당이라 놀림을 당하는 깐돌이가 나타나 종칠이를 때렸다. 형일이는 둘한테 싸우지 말라고 했다. 종칠이는 분해서 500원을 저 멀리 던져버렸다. 형일이는 그만 병원에 입원하고 말았다. 종칠이는 사과했다.",
+      "\"형일이 엄마, 미안케 됐구먼. 날 봐서라도 우리 종칠이를 너무 밉게 보지 마. 그래도 머리를 다치지 않고 다리를 다쳐서 천만다행여!\"",
+      "상계동 아이들이라는 책은 부자 아이, 유명한 어른에 관한 책이 아닌 우리 주변에 보이지 않는 가난하고 슬프지만 행복한 아이들의 책이다. 이 책을 다른 사람들에게 추천하는 이유는 우리가 크게 관심을 갖지 않는 어린이들을 이 책의 등장인물로 삼았기 때문이다. 엄마가 무당이라 놀림을 당하는 깐돌이, 마음씨 착한 윤아, 꿋꿋한 기옥이, 착한 형일이, 말썽을 피웠던 광철이가 모두 이 만화의 주인공들이다. 또한 각 인물들의 캐릭터성이 크게 비슷하지 않고 서로 달라 이 책을 추천한다.",
+      "(미작성 - 보완 필요)",
+      "문학의 사회적 약자 조명 기능 완벽 간파. '가난하고 슬프지만 행복한 아이들의 책', '관심 갖지 않는 어린이들을 주인공으로 삼았다'는 문학 비평적 안목 탁월. 인물별 캐릭터성 다양성 포착.",
+      "감상란에 담긴 뛰어난 사회적 문제의식을 마지막 칸으로 연결하여, '우리 주변이나 학교에서 소외되거나 상처받은 친구를 대하는 나의 태도'로 내면화하기.",
+      "만화의→동화(소설)의, 형일이가 다친 인과(던진 돈을 줍다가 사고 발생) 보완.",
+      "\"부자나 유명한 사람이 아닌, 소외되고 가난하지만 꿋꿋한 아이들을 주인공으로 세운 작가의 따뜻한 시선을 완벽히 읽어냈네! 문학이 왜 약한 사람들을 비추어야 하는지 깊이 이해한 최고의 서평이야.\"",
+      23,
+      25,
+      17,
+      21,
+      86,
+      "A+"
+    ]
+  }
+];
+
+
+    // --- Container Component with Live Google Sheets Auto-Sync ---
+    function DashboardContainer() {
+      const [data, setData] = useState(() => {
+        try {
+          const saved = localStorage.getItem('tutoring_reading_dashboard_data_v2');
+          if (saved) {
+            const parsed = JSON.parse(saved);
+            if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+          }
+        } catch (e) {
+          console.warn('Could not read from localStorage', e);
+        }
+        return INITIAL_REAL_DATA;
+      });
+
+      const [isServerLive, setIsServerLive] = useState(false);
+      const [isSyncing, setIsSyncing] = useState(false);
+      const [syncNotice, setSyncNotice] = useState('');
+      const [lastSyncTime, setLastSyncTime] = useState(() => {
+        const d = new Date();
+        return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}`;
+      });
+
+      const persistData = (nextData) => {
+        setData(nextData);
+        try {
+          localStorage.setItem('tutoring_reading_dashboard_data_v2', JSON.stringify(nextData));
+        } catch (e) {
+          console.warn('Could not write to localStorage', e);
+        }
+      };
+
+      const fetchServerData = async (forceSync = false) => {
+        if (forceSync) setIsSyncing(true);
+        try {
+          const endpoint = forceSync ? '/api/sync' : '/api/data';
+          const method = forceSync ? 'POST' : 'GET';
+          let res = null;
+          try {
+            res = await fetch(endpoint, { method, cache: 'no-cache' });
+          } catch (netErr) {
+            // Static file fallback if API route is unreachable
+            if (!forceSync) {
+              res = await fetch('/reading_data.json', { cache: 'no-cache' });
+            }
+          }
+
+          if (res && res.ok) {
+            const json = await res.json();
+            const serverRows = Array.isArray(json) ? json : (json.data || []);
+            if (Array.isArray(serverRows) && serverRows.length > 0) {
+              const curSig = JSON.stringify(data);
+              const newSig = JSON.stringify(serverRows);
+              if (curSig !== newSig) {
+                persistData(serverRows);
+              }
+              setIsServerLive(true);
+              const d = new Date();
+              const nowStr = json.synced_at || `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}`;
+              setLastSyncTime(nowStr);
+
+              if (forceSync) {
+                const count = serverRows.length > 1 ? serverRows.length - 1 : serverRows.length;
+                setSyncNotice(`구글 시트('독후감 이력관리') 동기화 완료: 총 ${count}건 갱신 (${nowStr})`);
+                setTimeout(() => setSyncNotice(''), 3500);
+              }
+              return serverRows;
+            }
+          }
+        } catch (err) {
+          console.warn('Live sync fetch error:', err);
+          setIsServerLive(false);
+        } finally {
+          if (forceSync) setIsSyncing(false);
+        }
+        return null;
+      };
+
+      // Auto-sync polling every 10s and on window focus
+      useEffect(() => {
+        fetchServerData(false);
+
+        const intervalId = setInterval(() => {
+          fetchServerData(false);
+        }, 10000);
+
+        const onFocus = () => {
+          fetchServerData(false);
+        };
+        window.addEventListener('focus', onFocus);
+        document.addEventListener('visibilitychange', () => {
+          if (!document.hidden) fetchServerData(false);
+        });
+
+        return () => {
+          clearInterval(intervalId);
+          window.removeEventListener('focus', onFocus);
+        };
+      }, []);
+
+      const updateItem = (index_, updatedRow) => {
+        const next = data.map(item => item.index_ === index_ ? { ...item, row: updatedRow } : item);
+        persistData(next);
+      };
+
+      const deleteItem = (indexToDelete) => {
+        const next = data.filter(item => item.index_ !== indexToDelete);
+        persistData(next);
+      };
+
+      const insertItem = (targetIndex, newRow) => {
+        const maxIdx = data.reduce((max, d) => Math.max(max, d.index_ || 0), 0);
+        const newItem = { index_: maxIdx + 1, row: newRow };
+        const next = [...data, newItem];
+        persistData(next);
+      };
+
+      const moveItem = (fromIdx, toIdx) => {
+        console.log('moveItem', fromIdx, toIdx);
+      };
+
+      const followLink = (url) => {
+        window.open(url, '_blank');
+      };
+
+      const handleResetDemoData = () => {
+        if (confirm('구글 시트의 원본 데이터로 초기화하시겠습니까? 직접 수정한 내용은 리셋됩니다.')) {
+          persistData(INITIAL_REAL_DATA);
+          fetchServerData(true);
+        }
+      };
+
+      return (
+        <div className="relative">
+          <App
+            data={data}
+            updateItem={updateItem}
+            deleteItem={deleteItem}
+            insertItem={insertItem}
+            moveItem={moveItem}
+            followLink={followLink}
+            onManualSync={() => fetchServerData(true)}
+            isLiveConnected={isServerLive}
+            lastSyncTime={lastSyncTime}
+            isSyncing={isSyncing}
+            syncNotice={syncNotice}
+          />
+
+          {/* Floating Helper Toolbar */}
+          <div className="fixed bottom-4 right-4 z-40 flex items-center gap-2 bg-white/90 backdrop-blur-md p-2 rounded-2xl shadow-lg border border-slate-200 text-xs font-bold">
+            <a
+              href="https://docs.google.com/spreadsheets/d/1cT7wCoT8aDh01ofDRb5Sh0ANHElVRZSro5TH1-IH6d0/edit?usp=sharing"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-3 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 transition-colors flex items-center gap-1.5 cursor-pointer"
+              title="구글 스프레드시트 원본 '독후감 이력관리' 열기"
+            >
+              <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+              <span>구글 시트</span>
+              <ArrowUpRight className="w-3.5 h-3.5" />
+            </a>
+            <span className="text-slate-300">|</span>
+            <button
+              onClick={() => fetchServerData(true)}
+              disabled={isSyncing}
+              className="px-3 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-60"
+              title="구글 시트 즉시 동기화"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 text-indigo-600 ${isSyncing ? 'animate-spin' : ''}`} />
+              <span>{isSyncing ? '동기화 중...' : '시트 동기화'}</span>
+            </button>
+            <span className="text-slate-300">|</span>
+            <button
+              onClick={handleResetDemoData}
+              className="px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors flex items-center gap-1 cursor-pointer"
+              title="원본 데이터로 리셋"
+            >
+              <RotateCcw className="w-3.5 h-3.5 text-slate-500" />
+              <span>초기화</span>
+            </button>
+            <span className="text-slate-300">|</span>
+            <span className="text-emerald-700 font-semibold px-2 py-1 bg-emerald-50 rounded-lg flex items-center gap-1">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+              {isServerLive ? '구글시트 실시간 연동 ON' : '웹 대시보드 동작 중'}
+            </span>
+          </div>
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<DashboardContainer />);
+  </script>
+</body>
+</html>
