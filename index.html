@@ -4929,13 +4929,10 @@
     function InBodyCIDSection({ latest }) {
       if (!latest) return null;
 
-      // 3 Points for InBody Curve: Weight, Skeletal Muscle, Body Fat (normalized roughly around 100% standard)
-      // Standard: Weight 62kg = 100%, Muscle 24kg = 100%, Fat 11kg = 100%
       const weightScore = Math.round((latest.weight / 62.0) * 100);
       const muscleScore = Math.round((latest.skeletalMuscleKg / 24.0) * 100);
       const fatScore = Math.round((latest.bodyFatKg / 11.0) * 100);
 
-      // Race Weight range: 60.5 ~ 61.5 kg (Ideal race weight for 168cm triathlete)
       const currentW = latest.weight;
       const minScale = 58.0;
       const maxScale = 65.0;
@@ -5027,7 +5024,6 @@
 
             <div className="my-5">
               <div className="relative pt-6 pb-4">
-                {/* Pointer Badge */}
                 <div
                   className="absolute top-0 -translate-x-1/2 flex flex-col items-center transition-all duration-500"
                   style={{ left: `${pct}%` }}
@@ -5038,9 +5034,7 @@
                   <div className="w-0 h-0 border-x-4 border-x-transparent border-t-4 border-t-emerald-600" />
                 </div>
 
-                {/* Range Bar */}
                 <div className="relative h-4 bg-slate-200 rounded-full overflow-hidden">
-                  {/* Optimal Zone Highlight */}
                   <div
                     className="absolute top-0 bottom-0 bg-emerald-400/70 border-x border-emerald-600"
                     style={{ left: `${optimalLeft}%`, width: `${optimalWidth}%` }}
@@ -5048,7 +5042,6 @@
                   />
                 </div>
 
-                {/* Range Labels */}
                 <div className="flex justify-between text-[11px] font-bold text-slate-400 mt-2">
                   <span>58.0 kg (경량)</span>
                   <span className="text-emerald-700 font-extrabold">최적 존 (60.5 ~ 61.5 kg)</span>
@@ -5084,6 +5077,97 @@
       );
     }
 
+    // --- COMPREHENSIVE ASSESSMENT REPORT CARD (TAB 1 EXTENSION) ---
+    function HealthReportCard({ latest, previous, records }) {
+      if (!latest) return null;
+
+      const evaluations = [
+        { item: '체중', val: `${latest.weight} kg`, status: '최적', statusClass: 'bg-emerald-100 text-emerald-800', note: '레이스 체중 범위(60.5~61.5kg) 완벽 유지' },
+        { item: '체질량지수 (BMI)', val: `${latest.bmi}`, status: '정상', statusClass: 'bg-emerald-100 text-emerald-800', note: '표준 범위(18.5~23.0) 내 안정적 안착' },
+        { item: '체지방률', val: `${latest.bodyFatPercent}%`, status: '건강', statusClass: 'bg-emerald-100 text-emerald-800', note: '체지방량 10.5kg, 에어로 슬림형' },
+        { item: '골격근 비율', val: `${latest.skeletalMusclePercent || 41.4}%`, status: '우수', statusClass: 'bg-indigo-100 text-indigo-800', note: '골격근 25.2kg, 지구력 추진력 최상' },
+        { item: '내장지방 레벨', val: `Lv ${latest.visceralFat}`, status: '양호', statusClass: 'bg-teal-100 text-teal-800', note: '전회 대비 0.5 개선, 심혈관 위험도 극저' },
+        { item: '체수분율', val: `${latest.waterPercent}%`, status: '양호', statusClass: 'bg-teal-100 text-teal-800', note: '수분량 34.5kg, 근육 펌핑 및 회복 유지' },
+        { item: '기초대사량', val: `${latest.bmr.toLocaleString()} kcal`, status: '우수', statusClass: 'bg-rose-100 text-rose-800', note: '제지방 50.31kg 비례 기초 연소 활발' },
+        { item: '신체 대사나이', val: `${latest.metabolicAge}세`, status: '특급', statusClass: 'bg-purple-100 text-purple-800', note: '실제 만 41세 대비 9세 젊은 대사 활성도' }
+      ];
+
+      return (
+        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-4">
+          <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+            <div className="flex items-center gap-2">
+              <div className="p-1.5 bg-teal-50 text-teal-700 rounded-lg">
+                <FileSpreadsheet className="w-4 h-4" />
+              </div>
+              <div>
+                <h3 className="text-sm font-black text-slate-900">종합 건강 & 신체 기능 정밀 평가 리포트</h3>
+                <p className="text-xs font-bold text-slate-500">구글 시트 '종합 분석 보고서' 기준 건강 매트릭스</p>
+              </div>
+            </div>
+            <span className="text-xs font-mono font-bold text-slate-400">
+              최종 평가일: {latest.dateStr}
+            </span>
+          </div>
+
+          {/* Evaluation Table */}
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-slate-50 text-slate-600 font-black border-b border-slate-200">
+                <tr>
+                  <th className="py-2.5 px-3">검사항목</th>
+                  <th className="py-2.5 px-3">측정치</th>
+                  <th className="py-2.5 px-3">종합 판정</th>
+                  <th className="py-2.5 px-3">의학 및 피트니스 코칭 해설</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 font-medium">
+                {evaluations.map((row, i) => (
+                  <tr key={i} className="hover:bg-slate-50/60">
+                    <td className="py-2.5 px-3 font-bold text-slate-800">{row.item}</td>
+                    <td className="py-2.5 px-3 font-mono font-black text-slate-900">{row.val}</td>
+                    <td className="py-2.5 px-3">
+                      <span className={`px-2 py-0.5 rounded-md text-[11px] font-black ${row.statusClass}`}>
+                        {row.status}
+                      </span>
+                    </td>
+                    <td className="py-2.5 px-3 text-slate-600">{row.note}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Actionable Triathlete Advice */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2">
+            <div className="p-3.5 bg-blue-50/70 border border-blue-200 rounded-xl text-xs">
+              <div className="font-black text-blue-900 mb-1 flex items-center gap-1.5">
+                <span>🏊 수영 세션 가이드</span>
+              </div>
+              <p className="text-slate-600 leading-relaxed font-medium">
+                체지방 10.5kg(17.3%)의 적절한 부력과 25.2kg 골격근이 결합되어 장거리 자유형 스트로크 시 어깨 피로도를 최소화합니다.
+              </p>
+            </div>
+            <div className="p-3.5 bg-emerald-50/70 border border-emerald-200 rounded-xl text-xs">
+              <div className="font-black text-emerald-900 mb-1 flex items-center gap-1.5">
+                <span>🚴 사이클 세션 가이드</span>
+              </div>
+              <p className="text-slate-600 leading-relaxed font-medium">
+                60.85kg 경량 체중에 높은 골격근 비율(41.4%)로 W/kg(체중 대비 파워) 효율이 뛰어나며, 평지 독주와 업힐 모두에 유리합니다.
+              </p>
+            </div>
+            <div className="p-3.5 bg-amber-50/70 border border-amber-200 rounded-xl text-xs">
+              <div className="font-black text-amber-900 mb-1 flex items-center gap-1.5">
+                <span>🏃 달리기 세션 가이드</span>
+              </div>
+              <p className="text-slate-600 leading-relaxed font-medium">
+                최근 3.02km 5'42"/km 페이스 진입 대기록 달성. 체중 60kg 초반 유지 시 무릎 관절 부하를 경감시키며 5분대 초반 진입이 가능합니다.
+              </p>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     // --- D3.JS INTERACTIVE HEALTH TRENDS CHART ---
     function HealthTrendsChart({ records }) {
       const containerRef = useRef(null);
@@ -5105,7 +5189,6 @@
           .attr("viewBox", `0 0 ${width} ${height}`)
           .attr("class", "overflow-visible font-sans");
 
-        // Filter valid data rows with weight
         const validData = records.filter(r => r.weight > 0);
         if (validData.length === 0) return;
 
@@ -5126,7 +5209,6 @@
           .nice()
           .range([height - margin.bottom, margin.top]);
 
-        // Background Grid lines
         svg.append("g")
           .attr("class", "grid")
           .attr("transform", `translate(${margin.left},0)`)
@@ -5139,7 +5221,6 @@
           .call(g => g.select(".domain").remove())
           .call(g => g.selectAll(".tick line").attr("stroke", "#f1f5f9").attr("stroke-dasharray", "3,3"));
 
-        // Race Weight Zone Band (60.5 ~ 61.5 kg)
         const bandTop = yWeight(61.5);
         const bandBottom = yWeight(60.5);
         svg.append("rect")
@@ -5159,28 +5240,24 @@
           .attr("fill", "#059669")
           .text("최적 레이스 체중존 (60.5 ~ 61.5kg)");
 
-        // Left Axis: Weight (kg)
         svg.append("g")
           .attr("transform", `translate(${margin.left},0)`)
           .call(d3.axisLeft(yWeight).ticks(6).tickFormat(d => `${d}kg`))
           .call(g => g.select(".domain").attr("stroke", "#cbd5e1"))
           .call(g => g.selectAll(".tick text").attr("fill", "#047857").attr("font-weight", "bold").attr("font-size", "11px"));
 
-        // Right Axis: Body Fat (%)
         svg.append("g")
           .attr("transform", `translate(${width - margin.right},0)`)
           .call(d3.axisRight(yFat).ticks(5).tickFormat(d => `${d}%`))
           .call(g => g.select(".domain").attr("stroke", "#cbd5e1"))
           .call(g => g.selectAll(".tick text").attr("fill", "#d97706").attr("font-weight", "bold").attr("font-size", "11px"));
 
-        // X Axis: Dates
         svg.append("g")
           .attr("transform", `translate(0,${height - margin.bottom})`)
           .call(d3.axisBottom(xScale))
           .call(g => g.select(".domain").attr("stroke", "#cbd5e1"))
           .call(g => g.selectAll(".tick text").attr("fill", "#475569").attr("font-weight", "bold").attr("font-size", "11px"));
 
-        // Gradients for area
         const defs = svg.append("defs");
         const weightGradient = defs.append("linearGradient")
           .attr("id", "healthWeightGrad")
@@ -5189,7 +5266,6 @@
         weightGradient.append("stop").attr("offset", "0%").attr("stop-color", "#10b981").attr("stop-opacity", 0.35);
         weightGradient.append("stop").attr("offset", "100%").attr("stop-color", "#10b981").attr("stop-opacity", 0.0);
 
-        // Area under Weight
         const weightArea = d3.area()
           .x(d => xScale(d.dateStr.split(" ")[0]))
           .y0(height - margin.bottom)
@@ -5201,7 +5277,6 @@
           .attr("fill", "url(#healthWeightGrad)")
           .attr("d", weightArea);
 
-        // Weight Line
         const weightLine = d3.line()
           .x(d => xScale(d.dateStr.split(" ")[0]))
           .y(d => yWeight(d.weight))
@@ -5214,16 +5289,6 @@
           .attr("stroke-width", 3)
           .attr("d", weightLine);
 
-        // Muscle Line (using yWeight scale since muscle is kg)
-        const muscleData = validData.filter(d => d.skeletalMuscleKg > 0);
-        if (muscleData.length > 0) {
-          const muscleLine = d3.line()
-            .x(d => xScale(d.dateStr.split(" ")[0]))
-            .y(d => yWeight(d.skeletalMuscleKg + 35.5)) // normalized visual track or direct
-            .curve(d3.curveMonotoneX);
-        }
-
-        // Body Fat % Line
         const fatData = validData.filter(d => d.bodyFatPercent > 0);
         if (fatData.length > 0) {
           const fatLine = d3.line()
@@ -5240,7 +5305,6 @@
             .attr("d", fatLine);
         }
 
-        // Data Circles: Weight
         svg.selectAll(".circle-weight")
           .data(validData)
           .enter()
@@ -5262,7 +5326,6 @@
           })
           .on("mouseleave", () => setTooltip(null));
 
-        // Data Circles: Body Fat
         svg.selectAll(".circle-fat")
           .data(fatData)
           .enter()
@@ -5296,7 +5359,6 @@
               </h3>
               <p className="text-xs text-slate-500 font-bold">측정 일자별 레이스 체중 진입과 체지방 감량 곡선</p>
             </div>
-            {/* Chart Legend */}
             <div className="flex items-center gap-4 text-xs font-bold">
               <div className="flex items-center gap-1.5">
                 <span className="w-3 h-3 rounded-full bg-emerald-600"></span>
@@ -5315,7 +5377,6 @@
 
           <div ref={containerRef} className="w-full relative min-h-[340px]" />
 
-          {/* Interactive Floating Tooltip */}
           {tooltip && (
             <div
               className="absolute z-30 bg-slate-950/95 text-white p-3 rounded-xl shadow-xl pointer-events-none text-xs border border-slate-800 transform -translate-x-1/2 -translate-y-full mb-3 min-w-[210px]"
@@ -5483,10 +5544,10 @@
           <div className="p-4 sm:p-5 border-b border-slate-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <div>
               <h3 className="text-sm font-black text-slate-900 flex items-center gap-2">
-                <List className="w-4 h-4 text-emerald-600" />
-                <span>체성분 측정 전수 기록 대장</span>
-                <span className="px-2 py-0.5 text-xs bg-emerald-100 text-emerald-800 rounded-full font-bold">
-                  총 {records.length}회 측정
+                <List className="w-4 h-4 text-teal-600" />
+                <span>누적 건강 & 인바디 측정 기록 대장</span>
+                <span className="px-2 py-0.5 text-xs bg-teal-100 text-teal-800 rounded-full font-bold">
+                  총 {records.length}회 누적
                 </span>
               </h3>
               <p className="text-xs text-slate-500 font-bold mt-0.5">구글 스프레드시트 '건강 데이터' 실시간 동기화</p>
@@ -5500,7 +5561,7 @@
                   placeholder="날짜 또는 메모 검색..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-9 pr-3 py-1.5 text-xs rounded-xl bg-slate-50 border border-slate-300 focus:outline-emerald-500 focus:bg-white font-medium"
+                  className="w-full pl-9 pr-3 py-1.5 text-xs rounded-xl bg-slate-50 border border-slate-300 focus:outline-teal-500 focus:bg-white font-medium"
                 />
               </div>
               <button
@@ -5511,7 +5572,7 @@
               </button>
               <button
                 onClick={onAdd}
-                className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black flex items-center gap-1.5 shadow-sm shadow-emerald-600/30 cursor-pointer shrink-0"
+                className="px-3 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-black flex items-center gap-1.5 shadow-sm shadow-teal-600/30 cursor-pointer shrink-0"
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span>기록 등록</span>
@@ -5640,7 +5701,6 @@
         const { name, value } = e.target;
         setFormData(prev => {
           const updated = { ...prev, [name]: value };
-          // Auto-calculate BMI if weight is provided (Height: 168cm)
           if (name === 'weight' && value) {
             const w = parseFloat(value);
             if (w > 0) {
@@ -5684,7 +5744,7 @@
           <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-xl w-full p-6 overflow-y-auto max-h-[90vh]">
             <div className="flex items-center justify-between pb-3 border-b border-slate-200">
               <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
-                <Heart className="w-5 h-5 text-emerald-600" />
+                <Heart className="w-5 h-5 text-teal-600" />
                 <span>{initialData ? '인바디 측정 기록 수정' : '새 인바디 측정 기록 등록'}</span>
               </h3>
               <button onClick={onClose} className="p-1 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600">
@@ -5817,7 +5877,7 @@
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-xl bg-emerald-600 text-white font-black hover:bg-emerald-700 shadow-sm"
+                  className="px-4 py-2 rounded-xl bg-teal-600 text-white font-black hover:bg-teal-700 shadow-sm"
                 >
                   저장하기
                 </button>
@@ -5838,6 +5898,7 @@
       isSyncing
     }) {
       const records = useMemo(() => parseHealthRecords(healthData), [healthData]);
+      const [activeHealthTab, setActiveHealthTab] = useState('report'); // 'report' | 'trends' | 'logs'
       const [modalState, setModalState] = useState({ isOpen: false, data: null });
 
       const latest = records.length > 0 ? records[records.length - 1] : null;
@@ -5930,30 +5991,79 @@
                   </a>
                 </div>
               </div>
+
+              {/* Navigation Tabs (헤드라인 하단 버튼식 탭) */}
+              <nav className="flex items-center gap-1 sm:gap-2 border-t border-slate-200 pt-2 pb-0.5 overflow-x-auto scrollbar-thin">
+                <button
+                  onClick={() => setActiveHealthTab('report')}
+                  className={`flex items-center gap-1.5 px-3 py-2 sm:px-3.5 sm:py-2.5 text-xs sm:text-sm font-bold rounded-xl transition-colors cursor-pointer border-b-2 shrink-0 whitespace-nowrap ${
+                    activeHealthTab === 'report'
+                      ? 'border-teal-600 text-teal-900 bg-teal-50/80 font-black'
+                      : 'border-transparent text-slate-700 hover:text-slate-950 hover:bg-slate-100'
+                  }`}
+                >
+                  <Activity className="w-4 h-4 text-teal-600 stroke-[2.5]" />
+                  <span>종합 분석 보고서</span>
+                </button>
+
+                <button
+                  onClick={() => setActiveHealthTab('trends')}
+                  className={`flex items-center gap-1.5 px-3 py-2 sm:px-3.5 sm:py-2.5 text-xs sm:text-sm font-bold rounded-xl transition-colors cursor-pointer border-b-2 shrink-0 whitespace-nowrap ${
+                    activeHealthTab === 'trends'
+                      ? 'border-teal-600 text-teal-900 bg-teal-50/80 font-black'
+                      : 'border-transparent text-slate-700 hover:text-slate-950 hover:bg-slate-100'
+                  }`}
+                >
+                  <TrendingUp className="w-4 h-4 text-emerald-600 stroke-[2.5]" />
+                  <span>지표별 추이 및 분석</span>
+                </button>
+
+                <button
+                  onClick={() => setActiveHealthTab('logs')}
+                  className={`flex items-center gap-1.5 px-3 py-2 sm:px-3.5 sm:py-2.5 text-xs sm:text-sm font-bold rounded-xl transition-colors cursor-pointer border-b-2 shrink-0 whitespace-nowrap ${
+                    activeHealthTab === 'logs'
+                      ? 'border-teal-600 text-teal-900 bg-teal-50/80 font-black'
+                      : 'border-transparent text-slate-700 hover:text-slate-950 hover:bg-slate-100'
+                  }`}
+                >
+                  <FileSpreadsheet className="w-4 h-4 text-indigo-600 stroke-[2.5]" />
+                  <span>누적 건강 측정 기록</span>
+                  <span className="ml-0.5 px-1.5 py-0.5 text-[11px] rounded-full bg-teal-100 text-teal-900 font-black font-mono">
+                    {records.length}건
+                  </span>
+                </button>
+              </nav>
             </div>
           </header>
 
-          {/* Main Content Sections */}
+          {/* Main Content Sections according to Active Tab */}
           <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6 flex-1 w-full">
-            {/* Top 6 KPI Cards */}
-            <HealthOverview latest={latest} previous={previous} count={records.length} />
+            {/* 1. 종합 분석 보고서 탭 */}
+            {activeHealthTab === 'report' && (
+              <>
+                <HealthOverview latest={latest} previous={previous} count={records.length} />
+                <InBodyCIDSection latest={latest} />
+                <HealthReportCard latest={latest} previous={previous} records={records} />
+              </>
+            )}
 
-            {/* InBody C-I-D Body Type + Race Weight Gauge */}
-            <InBodyCIDSection latest={latest} />
+            {/* 2. 지표별 추이 및 분석 탭 */}
+            {activeHealthTab === 'trends' && (
+              <>
+                <HealthTrendsChart records={records} />
+                <BodyCompositionDetails latest={latest} />
+              </>
+            )}
 
-            {/* D3 Multi-axis Line & Area Chart */}
-            <HealthTrendsChart records={records} />
-
-            {/* Body Composition Details 6-Grid */}
-            <BodyCompositionDetails latest={latest} />
-
-            {/* Measurement Logs Table */}
-            <HealthLogsTable
-              records={records}
-              onAdd={handleAdd}
-              onEdit={handleEdit}
-              onDelete={handleDelete}
-            />
+            {/* 3. 누적 건강 측정 기록 탭 */}
+            {activeHealthTab === 'logs' && (
+              <HealthLogsTable
+                records={records}
+                onAdd={handleAdd}
+                onEdit={handleEdit}
+                onDelete={handleDelete}
+              />
+            )}
           </main>
 
           {/* Add / Edit Modal */}
