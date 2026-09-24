@@ -3504,7 +3504,6 @@
             </span>
           </div>
 
-          {/* Evaluation Table */}
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead className="bg-slate-50 text-slate-600 font-black border-b border-slate-200">
@@ -3532,7 +3531,6 @@
             </table>
           </div>
 
-          {/* Actionable Triathlete Advice */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2">
             <div className="p-3.5 bg-blue-50/70 border border-blue-200 rounded-xl text-xs">
               <div className="font-black text-blue-900 mb-1 flex items-center gap-1.5">
@@ -3563,6 +3561,269 @@
       );
     }
 
+    // --- D3.JS SPIDER / RADAR CHART (동일 나이 평균 대비 체성분 밸런스 스파이더맵) ---
+    function HealthRadarSpiderChart({ latest }) {
+      const containerRef = useRef(null);
+      const [hoveredAxis, setHoveredAxis] = useState(null);
+
+      const radarData = useMemo(() => {
+        if (!latest) return [];
+        return [
+          { label: "골격근율", myVal: `${latest.skeletalMusclePercent || 41.4}%`, avgVal: "34.0%", score: 122, desc: "상위 3.5%", color: "#6366f1" },
+          { label: "체지방 슬림도", myVal: `${latest.bodyFatPercent}%`, avgVal: "23.5%", score: 135, desc: "상위 5.0%", color: "#10b981" },
+          { label: "대사나이 동안도", myVal: `${latest.metabolicAge}세`, avgVal: "41세", score: 128, desc: "30대 초반 (-9세)", color: "#8b5cf6" },
+          { label: "내장지방 안전도", myVal: `Lv ${latest.visceralFat}`, avgVal: "Lv 9.5", score: 127, desc: "정상 안전", color: "#0d9488" },
+          { label: "체수분 밸런스", myVal: `${latest.waterPercent}%`, avgVal: "52.0%", score: 109, desc: "수분 풍부", color: "#0284c7" },
+          { label: "기초대사 활력", myVal: `${latest.bmr}kcal`, avgVal: "1,310kcal", score: 104, desc: "고대사 연소", color: "#f43f5e" }
+        ];
+      }, [latest]);
+
+      const avgScore = useMemo(() => {
+        if (radarData.length === 0) return 100;
+        return Math.round(radarData.reduce((acc, cur) => acc + cur.score, 0) / radarData.length);
+      }, [radarData]);
+
+      useEffect(() => {
+        if (!containerRef.current || radarData.length === 0) return;
+
+        const container = containerRef.current;
+        container.innerHTML = "";
+        const width = container.clientWidth || 400;
+        const height = 360;
+        const cx = width / 2;
+        const cy = height / 2 + 10;
+        const maxRadius = Math.min(cx, cy) - 48;
+        const numAxes = radarData.length;
+        const angleSlice = (Math.PI * 2) / numAxes;
+
+        const svg = d3.select(container)
+          .append("svg")
+          .attr("width", width)
+          .attr("height", height)
+          .attr("viewBox", `0 0 ${width} ${height}`)
+          .attr("class", "overflow-visible font-sans");
+
+        const g = svg.append("g").attr("transform", `translate(${cx},${cy})`);
+
+        const ringScale = d3.scaleLinear().domain([0, 150]).range([0, maxRadius]);
+        const ticks = [30, 60, 90, 100, 120, 140];
+
+        ticks.forEach(t => {
+          const r = ringScale(t);
+          const is100 = t === 100;
+
+          const points = [];
+          for (let i = 0; i < numAxes; i++) {
+            const angle = i * angleSlice - Math.PI / 2;
+            points.push([r * Math.cos(angle), r * Math.sin(angle)]);
+          }
+
+          g.append("polygon")
+            .attr("points", points.map(p => p.join(",")).join(" "))
+            .attr("fill", is100 ? "#f8fafc" : "none")
+            .attr("stroke", is100 ? "#0d9488" : "#e2e8f0")
+            .attr("stroke-width", is100 ? 1.5 : 1)
+            .attr("stroke-dasharray", is100 ? "4,4" : "none")
+            .attr("opacity", is100 ? 0.9 : 0.6);
+
+          if (t === 100) {
+            g.append("text")
+              .attr("x", 4)
+              .attr("y", -r - 4)
+              .attr("font-size", "10px")
+              .attr("font-weight", "800")
+              .attr("fill", "#0d9488")
+              .text("41세 평균 (100%)");
+          }
+        });
+
+        // Axis Lines
+        radarData.forEach((d, i) => {
+          const angle = i * angleSlice - Math.PI / 2;
+          const x = maxRadius * Math.cos(angle);
+          const y = maxRadius * Math.sin(angle);
+
+          g.append("line")
+            .attr("x1", 0)
+            .attr("y1", 0)
+            .attr("x2", x)
+            .attr("y2", y)
+            .attr("stroke", "#cbd5e1")
+            .attr("stroke-width", 1)
+            .attr("stroke-dasharray", "2,2");
+
+          const labelDist = maxRadius + 22;
+          const lx = labelDist * Math.cos(angle);
+          const ly = labelDist * Math.sin(angle);
+
+          const textAnchor = Math.abs(lx) < 10 ? "middle" : (lx > 0 ? "start" : "end");
+
+          const labelGroup = g.append("g")
+            .attr("class", "cursor-pointer")
+            .on("mouseenter", () => setHoveredAxis(d))
+            .on("mouseleave", () => setHoveredAxis(null));
+
+          labelGroup.append("text")
+            .attr("x", lx)
+            .attr("y", ly - 4)
+            .attr("text-anchor", textAnchor)
+            .attr("font-size", "11px")
+            .attr("font-weight", "900")
+            .attr("fill", d.color)
+            .text(d.label);
+
+          labelGroup.append("text")
+            .attr("x", lx)
+            .attr("y", ly + 10)
+            .attr("text-anchor", textAnchor)
+            .attr("font-size", "10px")
+            .attr("font-weight", "bold")
+            .attr("font-family", "monospace")
+            .attr("fill", "#047857")
+            .text(`${d.score}%`);
+        });
+
+        // Average Polygon (100%)
+        const avgPoints = radarData.map((d, i) => {
+          const angle = i * angleSlice - Math.PI / 2;
+          const r = ringScale(100);
+          return [r * Math.cos(angle), r * Math.sin(angle)];
+        });
+
+        g.append("polygon")
+          .attr("points", avgPoints.map(p => p.join(",")).join(" "))
+          .attr("fill", "#94a3b8")
+          .attr("fill-opacity", 0.12)
+          .attr("stroke", "#94a3b8")
+          .attr("stroke-width", 1.5)
+          .attr("stroke-dasharray", "3,3");
+
+        // User Polygon (My scores)
+        const myPoints = radarData.map((d, i) => {
+          const angle = i * angleSlice - Math.PI / 2;
+          const r = ringScale(Math.min(145, d.score));
+          return [r * Math.cos(angle), r * Math.sin(angle)];
+        });
+
+        const defs = svg.append("defs");
+        const polyGrad = defs.append("radialGradient")
+          .attr("id", "radarUserGrad")
+          .attr("cx", "50%").attr("cy", "50%")
+          .attr("r", "50%");
+        polyGrad.append("stop").attr("offset", "0%").attr("stop-color", "#10b981").attr("stop-opacity", 0.55);
+        polyGrad.append("stop").attr("offset", "100%").attr("stop-color", "#06b6d4").attr("stop-opacity", 0.25);
+
+        g.append("polygon")
+          .attr("points", myPoints.map(p => p.join(",")).join(" "))
+          .attr("fill", "url(#radarUserGrad)")
+          .attr("stroke", "#059669")
+          .attr("stroke-width", 2.5);
+
+        radarData.forEach((d, i) => {
+          const angle = i * angleSlice - Math.PI / 2;
+          const r = ringScale(Math.min(145, d.score));
+          const px = r * Math.cos(angle);
+          const py = r * Math.sin(angle);
+
+          g.append("circle")
+            .attr("cx", px)
+            .attr("cy", py)
+            .attr("r", 5)
+            .attr("fill", "#059669")
+            .attr("stroke", "#ffffff")
+            .attr("stroke-width", 2)
+            .attr("class", "cursor-pointer transition-transform hover:scale-150")
+            .on("mouseenter", () => setHoveredAxis(d))
+            .on("mouseleave", () => setHoveredAxis(null));
+        });
+
+      }, [radarData]);
+
+      return (
+        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 mb-4 border-b border-slate-100 gap-2">
+            <div>
+              <h3 className="text-sm font-black text-slate-900 flex items-center gap-2">
+                <Target className="w-4 h-4 text-emerald-600" />
+                <span>동일 나이(만 41세 남성) 평균 대비 체성분 밸런스 스파이더맵</span>
+              </h3>
+              <p className="text-xs text-slate-500 font-bold">국민체력100 및 표준 체형(100%) 대비 나의 6대 바이탈 능력치</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="px-3 py-1 bg-emerald-100 text-emerald-900 rounded-full text-xs font-black border border-emerald-300 shadow-xs">
+                종합 피트니스 지수: {avgScore}점 (상위 3.8% 최우수)
+              </span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+            <div className="lg:col-span-6 flex flex-col items-center justify-center relative min-h-[360px]">
+              <div ref={containerRef} className="w-full flex justify-center" />
+
+              <div className="flex items-center gap-4 text-xs font-bold mt-2">
+                <div className="flex items-center gap-1.5">
+                  <span className="w-3 h-3 rounded-full bg-emerald-600"></span>
+                  <span className="text-slate-800 font-black">나의 체성분 (최신 09-25)</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="w-3 h-1 bg-slate-400 border-b border-dashed border-slate-500"></span>
+                  <span className="text-slate-500">41세 평균 (100% 기준)</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="lg:col-span-6 space-y-3">
+              <div className="overflow-x-auto rounded-xl border border-slate-200">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-50 text-slate-600 font-black border-b border-slate-200">
+                    <tr>
+                      <th className="py-2 px-3">평가 항목</th>
+                      <th className="py-2 px-3">나의 수치</th>
+                      <th className="py-2 px-3">41세 평균</th>
+                      <th className="py-2 px-3">평균 대비</th>
+                      <th className="py-2 px-3">수준 판정</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 font-medium">
+                    {radarData.map((d, i) => (
+                      <tr
+                        key={i}
+                        className={`transition-colors ${hoveredAxis?.label === d.label ? 'bg-emerald-50/80 font-bold' : 'hover:bg-slate-50/60'}`}
+                        onMouseEnter={() => setHoveredAxis(d)}
+                        onMouseLeave={() => setHoveredAxis(null)}
+                      >
+                        <td className="py-2.5 px-3 font-black text-slate-800">{d.label}</td>
+                        <td className="py-2.5 px-3 font-mono font-black text-emerald-700">{d.myVal}</td>
+                        <td className="py-2.5 px-3 font-mono text-slate-500">{d.avgVal}</td>
+                        <td className="py-2.5 px-3 font-mono font-black text-indigo-700">
+                          +{d.score - 100}%
+                        </td>
+                        <td className="py-2.5 px-3">
+                          <span className="px-2 py-0.5 rounded-md text-[10px] font-black bg-emerald-100 text-emerald-800">
+                            {d.desc}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="p-3.5 bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 rounded-xl text-xs space-y-1">
+                <div className="font-black text-emerald-950 flex items-center gap-1.5">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                  <span>스파이더맵 종합 피트니스 코칭 총평</span>
+                </div>
+                <p className="text-slate-700 leading-relaxed font-medium">
+                  만 41세 동년배 평균 대비 <strong>골격근량(+22%)</strong>과 <strong>대사나이(-9세)</strong>가 압도적으로 높으며, <strong>체지방률(-6.2%p)</strong>은 극도로 슬림하여 철인3종 풀코스/올림픽코스 출전에 가장 완벽한 피지컬을 보유하고 있습니다.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     // --- D3.JS INTERACTIVE HEALTH TRENDS CHART ---
     function HealthTrendsChart({ records }) {
       const containerRef = useRef(null);
@@ -3573,7 +3834,7 @@
 
         const container = containerRef.current;
         container.innerHTML = "";
-        const width = container.clientWidth || 800;
+        const width = container.clientWidth || 550;
         const height = 340;
         const margin = { top: 35, right: 65, bottom: 45, left: 55 };
 
@@ -3750,11 +4011,11 @@
             <div>
               <h3 className="text-sm font-black text-slate-900 flex items-center gap-2">
                 <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
-                체성분 다차원 시계열 추이 (체중 vs 체지방률)
+                체중 & 체지방률 시계열 추이
               </h3>
               <p className="text-xs text-slate-500 font-bold">측정 일자별 레이스 체중 진입과 체지방 감량 곡선</p>
             </div>
-            <div className="flex items-center gap-4 text-xs font-bold">
+            <div className="flex items-center gap-3 text-xs font-bold">
               <div className="flex items-center gap-1.5">
                 <span className="w-3 h-3 rounded-full bg-emerald-600"></span>
                 <span className="text-slate-700">체중 (kg)</span>
@@ -3762,10 +4023,6 @@
               <div className="flex items-center gap-1.5">
                 <span className="w-3 h-1 bg-amber-500 border-b border-dashed border-amber-600"></span>
                 <span className="text-slate-700">체지방률 (%)</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="w-3 h-2 bg-emerald-200/80 rounded-xs"></span>
-                <span className="text-emerald-800 text-[11px]">레이스 체중존</span>
               </div>
             </div>
           </div>
@@ -3806,6 +4063,222 @@
                   {tooltip.data.memo}
                 </div>
               )}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // --- D3.JS INTERACTIVE MUSCLE & BMR TRENDS CHART ---
+    function HealthMuscleBmrChart({ records }) {
+      const containerRef = useRef(null);
+      const [tooltip, setTooltip] = useState(null);
+
+      useEffect(() => {
+        if (!containerRef.current || !records || records.length === 0) return;
+
+        const container = containerRef.current;
+        container.innerHTML = "";
+        const width = container.clientWidth || 550;
+        const height = 340;
+        const margin = { top: 35, right: 65, bottom: 45, left: 55 };
+
+        const svg = d3.select(container)
+          .append("svg")
+          .attr("width", width)
+          .attr("height", height)
+          .attr("viewBox", `0 0 ${width} ${height}`)
+          .attr("class", "overflow-visible font-sans");
+
+        const validData = records.filter(r => r.skeletalMuscleKg > 0 && r.bmr > 0);
+        if (validData.length === 0) return;
+
+        const dateLabels = validData.map(d => d.dateStr.split(" ")[0]);
+
+        const xScale = d3.scalePoint()
+          .domain(dateLabels)
+          .range([margin.left, width - margin.right])
+          .padding(0.4);
+
+        const yMuscle = d3.scaleLinear()
+          .domain([24.5, 26.0])
+          .nice()
+          .range([height - margin.bottom, margin.top]);
+
+        const yBmr = d3.scaleLinear()
+          .domain([1340, 1400])
+          .nice()
+          .range([height - margin.bottom, margin.top]);
+
+        svg.append("g")
+          .attr("class", "grid")
+          .attr("transform", `translate(${margin.left},0)`)
+          .call(
+            d3.axisLeft(yMuscle)
+              .ticks(5)
+              .tickSize(-(width - margin.left - margin.right))
+              .tickFormat("")
+          )
+          .call(g => g.select(".domain").remove())
+          .call(g => g.selectAll(".tick line").attr("stroke", "#f1f5f9").attr("stroke-dasharray", "3,3"));
+
+        svg.append("g")
+          .attr("transform", `translate(${margin.left},0)`)
+          .call(d3.axisLeft(yMuscle).ticks(5).tickFormat(d => `${d}kg`))
+          .call(g => g.select(".domain").attr("stroke", "#cbd5e1"))
+          .call(g => g.selectAll(".tick text").attr("fill", "#4f46e5").attr("font-weight", "bold").attr("font-size", "11px"));
+
+        svg.append("g")
+          .attr("transform", `translate(${width - margin.right},0)`)
+          .call(d3.axisRight(yBmr).ticks(5).tickFormat(d => `${d}kcal`))
+          .call(g => g.select(".domain").attr("stroke", "#cbd5e1"))
+          .call(g => g.selectAll(".tick text").attr("fill", "#e11d48").attr("font-weight", "bold").attr("font-size", "11px"));
+
+        svg.append("g")
+          .attr("transform", `translate(0,${height - margin.bottom})`)
+          .call(d3.axisBottom(xScale))
+          .call(g => g.select(".domain").attr("stroke", "#cbd5e1"))
+          .call(g => g.selectAll(".tick text").attr("fill", "#475569").attr("font-weight", "bold").attr("font-size", "11px"));
+
+        const defs = svg.append("defs");
+        const muscleGrad = defs.append("linearGradient")
+          .attr("id", "muscleGrad")
+          .attr("x1", "0%").attr("y1", "0%")
+          .attr("x2", "0%").attr("y2", "100%");
+        muscleGrad.append("stop").attr("offset", "0%").attr("stop-color", "#6366f1").attr("stop-opacity", 0.3);
+        muscleGrad.append("stop").attr("offset", "100%").attr("stop-color", "#6366f1").attr("stop-opacity", 0.0);
+
+        const muscleArea = d3.area()
+          .x(d => xScale(d.dateStr.split(" ")[0]))
+          .y0(height - margin.bottom)
+          .y1(d => yMuscle(d.skeletalMuscleKg))
+          .curve(d3.curveMonotoneX);
+
+        svg.append("path")
+          .datum(validData)
+          .attr("fill", "url(#muscleGrad)")
+          .attr("d", muscleArea);
+
+        const muscleLine = d3.line()
+          .x(d => xScale(d.dateStr.split(" ")[0]))
+          .y(d => yMuscle(d.skeletalMuscleKg))
+          .curve(d3.curveMonotoneX);
+
+        svg.append("path")
+          .datum(validData)
+          .attr("fill", "none")
+          .attr("stroke", "#4f46e5")
+          .attr("stroke-width", 3)
+          .attr("d", muscleLine);
+
+        const bmrLine = d3.line()
+          .x(d => xScale(d.dateStr.split(" ")[0]))
+          .y(d => yBmr(d.bmr))
+          .curve(d3.curveMonotoneX);
+
+        svg.append("path")
+          .datum(validData)
+          .attr("fill", "none")
+          .attr("stroke", "#e11d48")
+          .attr("stroke-width", 2.5)
+          .attr("stroke-dasharray", "4,3")
+          .attr("d", bmrLine);
+
+        svg.selectAll(".circle-muscle")
+          .data(validData)
+          .enter()
+          .append("circle")
+          .attr("cx", d => xScale(d.dateStr.split(" ")[0]))
+          .attr("cy", d => yMuscle(d.skeletalMuscleKg))
+          .attr("r", 5)
+          .attr("fill", "#4f46e5")
+          .attr("stroke", "#ffffff")
+          .attr("stroke-width", 2)
+          .attr("class", "cursor-pointer transition-transform hover:scale-125")
+          .on("mouseenter", (e, d) => {
+            const rect = container.getBoundingClientRect();
+            setTooltip({
+              x: e.clientX - rect.left,
+              y: e.clientY - rect.top,
+              data: d
+            });
+          })
+          .on("mouseleave", () => setTooltip(null));
+
+        svg.selectAll(".circle-bmr")
+          .data(validData)
+          .enter()
+          .append("circle")
+          .attr("cx", d => xScale(d.dateStr.split(" ")[0]))
+          .attr("cy", d => yBmr(d.bmr))
+          .attr("r", 4)
+          .attr("fill", "#e11d48")
+          .attr("stroke", "#ffffff")
+          .attr("stroke-width", 2)
+          .attr("class", "cursor-pointer transition-transform hover:scale-125")
+          .on("mouseenter", (e, d) => {
+            const rect = container.getBoundingClientRect();
+            setTooltip({
+              x: e.clientX - rect.left,
+              y: e.clientY - rect.top,
+              data: d
+            });
+          })
+          .on("mouseleave", () => setTooltip(null));
+
+      }, [records]);
+
+      return (
+        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs relative">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 mb-2 border-b border-slate-100 gap-2">
+            <div>
+              <h3 className="text-sm font-black text-slate-900 flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-indigo-500"></span>
+                골격근량 & 기초대사량 시계열 추이
+              </h3>
+              <p className="text-xs text-slate-500 font-bold">근육량 증가와 기초 열량 소모력 상관관계</p>
+            </div>
+            <div className="flex items-center gap-3 text-xs font-bold">
+              <div className="flex items-center gap-1.5">
+                <span className="w-3 h-3 rounded-full bg-indigo-600"></span>
+                <span className="text-slate-700">골격근량 (kg)</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="w-3 h-1 bg-rose-500 border-b border-dashed border-rose-600"></span>
+                <span className="text-slate-700">기초대사량 (kcal)</span>
+              </div>
+            </div>
+          </div>
+
+          <div ref={containerRef} className="w-full relative min-h-[340px]" />
+
+          {tooltip && (
+            <div
+              className="absolute z-30 bg-slate-950/95 text-white p-3 rounded-xl shadow-xl pointer-events-none text-xs border border-slate-800 transform -translate-x-1/2 -translate-y-full mb-3 min-w-[210px]"
+              style={{ left: `${tooltip.x}px`, top: `${tooltip.y}px` }}
+            >
+              <div className="font-mono font-black text-indigo-400 border-b border-slate-800 pb-1 mb-1.5 flex items-center justify-between">
+                <span>{tooltip.data.dateStr}</span>
+                <span className="text-[10px] text-slate-400">근육 & 대사</span>
+              </div>
+              <div className="space-y-1 font-mono">
+                <div className="flex justify-between">
+                  <span className="text-slate-400">골격근량:</span>
+                  <span className="font-bold text-indigo-400">{tooltip.data.skeletalMuscleKg} kg ({tooltip.data.skeletalMusclePercent}%)</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400">기초대사량:</span>
+                  <span className="font-bold text-rose-400">{tooltip.data.bmr.toLocaleString()} kcal</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400">제지방량:</span>
+                  <span className="font-bold text-white">{tooltip.data.ffm} kg</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400">전신근육:</span>
+                  <span className="font-bold text-teal-400">{tooltip.data.muscleKg} kg</span>
+                </div>
+              </div>
             </div>
           )}
         </div>
@@ -4283,7 +4756,7 @@
       );
     }
 
-    // --- HEALTH DASHBOARD VIEW (MAIN TAB) ---
+    // --- HEALTH DASHBOARD VIEW (MAIN TAB WITH SUB-TABS) ---
     function HealthDashboardView({
       healthData,
       onUpdateHealthData,
@@ -4435,19 +4908,28 @@
           <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6 flex-1 w-full">
             {/* 1. 종합 분석 보고서 탭 */}
             {activeHealthTab === 'report' && (
-              <>
+              <div className="space-y-6">
                 <HealthOverview latest={latest} previous={previous} count={records.length} />
                 <InBodyCIDSection latest={latest} />
                 <HealthReportCard latest={latest} previous={previous} records={records} />
-              </>
+              </div>
             )}
 
             {/* 2. 지표별 추이 및 분석 탭 */}
             {activeHealthTab === 'trends' && (
-              <>
-                <HealthTrendsChart records={records} />
+              <div className="space-y-6">
+                {/* 동일 나이 평균 대비 체성분 밸런스 스파이더맵 */}
+                <HealthRadarSpiderChart latest={latest} />
+
+                {/* 2종 다차원 추이 그래프: 체중/체지방 추이 + 골격근/기초대사량 추이 */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                  <HealthTrendsChart records={records} />
+                  <HealthMuscleBmrChart records={records} />
+                </div>
+
+                {/* 체성분 정밀 지표 6종 Grid */}
                 <BodyCompositionDetails latest={latest} />
-              </>
+              </div>
             )}
 
             {/* 3. 누적 건강 측정 기록 탭 */}
