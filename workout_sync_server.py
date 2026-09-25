@@ -39,10 +39,15 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 SPREADSHEET_ID = "1prXk269ik5JTbghA5UZbh3uW56pMrzGhqnNtkrm3YKw"
 SHEET_RANGE = "'운동 기록'!A1:Z500"
 HEALTH_RANGE = "'건강 데이터'!A1:Z100"
+
+READING_SPREADSHEET_ID = "1cT7wCoT8aDh01ofDRb5Sh0ANHElVRZSro5TH1-IH6d0"
+READING_RANGE = "독후감 이력관리!A1:Z500"
+
 TOKEN_PATH = os.path.join(BASE_DIR, "token.json")
 CREDENTIALS_PATH = os.path.join(BASE_DIR, "credentials.json")
 DATA_FILE = os.path.join(BASE_DIR, "workout_data.json")
 HEALTH_FILE = os.path.join(BASE_DIR, "health_data.json")
+READING_FILE = os.path.join(BASE_DIR, "reading_data.json")
 
 POLL_INTERVAL_SECONDS = 15
 DEFAULT_PORT = 8082
@@ -51,6 +56,7 @@ DEFAULT_PORT = 8082
 cache_lock = threading.Lock()
 cached_records = []
 cached_health_records = []
+cached_reading_records = []
 last_sync_timestamp = ""
 last_data_hash = ""
 sync_status = "초기화 대기 중"
@@ -58,8 +64,8 @@ sync_count = 0
 
 
 def load_local_cached_data():
-    """Load workout_data.json and health_data.json if they exist."""
-    global cached_records, cached_health_records, last_data_hash, last_sync_timestamp
+    """Load workout_data.json, health_data.json, and reading_data.json if they exist."""
+    global cached_records, cached_health_records, cached_reading_records, last_data_hash, last_sync_timestamp
     if os.path.exists(DATA_FILE):
         try:
             with open(DATA_FILE, "r", encoding="utf-8") as f:
@@ -84,6 +90,17 @@ def load_local_cached_data():
             print(f"[Init] health_data.json 캐시 로드 성공 ({len(cached_health_records)}건)")
         except Exception as e:
             print(f"[Warn] health_data.json 로드 실패: {e}")
+
+    if os.path.exists(READING_FILE):
+        try:
+            with open(READING_FILE, "r", encoding="utf-8") as f:
+                r_data = json.load(f)
+                if isinstance(r_data, list):
+                    with cache_lock:
+                        cached_reading_records = r_data
+            print(f"[Init] reading_data.json 캐시 로드 성공 ({len(cached_reading_records)}건)")
+        except Exception as e:
+            print(f"[Warn] reading_data.json 로드 실패: {e}")
 
 
 def get_sheets_service():
@@ -266,6 +283,22 @@ class SyncServerHandler(SimpleHTTPRequestHandler):
             self.wfile.write(body)
             return
 
+        if parsed.path == '/api/reading':
+            with cache_lock:
+                r_copy = list(cached_reading_records)
+            response_data = {
+                "status": "success",
+                "count": len(r_copy),
+                "data": r_copy
+            }
+            body = json.dumps(response_data, ensure_ascii=False).encode('utf-8')
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json; charset=utf-8')
+            self.send_header('Content-Length', str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+            return
+
         if parsed.path == '/api/status':
             with cache_lock:
                 status_info = {
@@ -300,6 +333,7 @@ class SyncServerHandler(SimpleHTTPRequestHandler):
             with cache_lock:
                 data_copy = list(cached_records)
                 h_copy = list(cached_health_records)
+                r_copy = list(cached_reading_records)
                 ts = last_sync_timestamp
                 st = sync_status
                 sc = sync_count
@@ -312,7 +346,8 @@ class SyncServerHandler(SimpleHTTPRequestHandler):
                 "sync_count": sc,
                 "count": len(data_copy),
                 "data": data_copy,
-                "health_data": h_copy
+                "health_data": h_copy,
+                "reading_data": r_copy
             }
             body = json.dumps(response_data, ensure_ascii=False).encode('utf-8')
             self.send_response(200 if ok else 500)
