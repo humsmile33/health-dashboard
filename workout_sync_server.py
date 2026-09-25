@@ -23,6 +23,7 @@ import socket
 import hashlib
 import datetime
 import threading
+import subprocess
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 from urllib.parse import urlparse
 
@@ -49,7 +50,7 @@ DATA_FILE = os.path.join(BASE_DIR, "workout_data.json")
 HEALTH_FILE = os.path.join(BASE_DIR, "health_data.json")
 READING_FILE = os.path.join(BASE_DIR, "reading_data.json")
 
-POLL_INTERVAL_SECONDS = 15
+POLL_INTERVAL_SECONDS = 86400  # 1일 1회 백그라운드 자동 모니터링
 DEFAULT_PORT = 8082
 
 # Thread-safe global cache
@@ -209,6 +210,14 @@ def fetch_and_update_from_sheets():
                 json.dump(formatted, f, ensure_ascii=False, indent=2)
         except Exception as e:
             print(f"[File Error] workout_data.json 저장 실패: {e}")
+
+        # Automatically rebuild HTML dashboard templates
+        try:
+            build_script = os.path.join(BASE_DIR, "build_workout_dashboard.py")
+            if os.path.exists(build_script):
+                subprocess.run([sys.executable, build_script], check=True, cwd=BASE_DIR)
+        except Exception as e:
+            print(f"[Build Warning] 대시보드 HTML 재생성 중 오류: {e}")
 
         if has_changed:
             print(f"[LiveSync] 🔄 구글 시트 변경사항 감지 및 갱신 완료: 총 {len(formatted)}행 ({now_str})")

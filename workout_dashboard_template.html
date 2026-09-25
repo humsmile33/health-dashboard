@@ -6079,7 +6079,7 @@ function ReadingDashboardView({ data, updateItem, deleteItem, insertItem, moveIt
         }
 
         setTimeout(() => {
-          setIsSyncing(false);
+          setLocalIsSyncing(false);
           setSyncNotice(`시트 최신 데이터 실시간 동기화 완료: 총 ${validCount}건 연결됨 (최신: ${targetSession} "${targetTitle}" · ${nowStr})`);
           setTimeout(() => {
             setSyncNotice('');
@@ -8425,7 +8425,7 @@ function ReadingDashboardView({ data, updateItem, deleteItem, insertItem, moveIt
       // Reading & Essay Tutoring Data State
       const [readingData, setReadingData] = useState(() => {
         try {
-          const saved = localStorage.getItem('tutoring_reading_dashboard_data_v3');
+          const saved = localStorage.getItem('tutoring_reading_dashboard_data_v4');
           if (saved) {
             const parsed = JSON.parse(saved);
             if (Array.isArray(parsed) && parsed.length >= INITIAL_READING_DATA.length) {
@@ -8458,7 +8458,7 @@ function ReadingDashboardView({ data, updateItem, deleteItem, insertItem, moveIt
       const persistReadingData = (newData) => {
         setReadingData(newData);
         try {
-          localStorage.setItem('tutoring_reading_dashboard_data_v3', JSON.stringify(newData));
+          localStorage.setItem('tutoring_reading_dashboard_data_v4', JSON.stringify(newData));
         } catch (e) {}
       };
 
@@ -8497,17 +8497,41 @@ function ReadingDashboardView({ data, updateItem, deleteItem, insertItem, moveIt
       };
 
       const fetchServerData = async (force = false) => {
-        setIsSyncing(true);
-        try {
-          const url = force ? '/api/sync' : '/api/data';
-          const method = force ? 'POST' : 'GET';
-          const res = await fetch(url, {
-            method,
-            headers: { 'Cache-Control': 'no-cache' }
-          });
+        if (force) {
+          setIsSyncing(true);
+        }
+        const startTime = Date.now();
+        let syncSuccess = false;
+        let syncMsg = '';
 
-          if (res.ok) {
-            const jsonRes = await res.json();
+        try {
+          // 1. Try local sync server endpoints (same-origin /api/sync or local port 8082)
+          const endpoints = [
+            { url: force ? '/api/sync' : '/api/data', method: force ? 'POST' : 'GET' },
+            { url: force ? 'http://localhost:8082/api/sync' : 'http://localhost:8082/api/data', method: force ? 'POST' : 'GET' }
+          ];
+
+          let jsonRes = null;
+          for (const ep of endpoints) {
+            try {
+              const controller = new AbortController();
+              const timeoutId = setTimeout(() => controller.abort(), 2000);
+              const res = await fetch(ep.url, {
+                method: ep.method,
+                headers: { 'Cache-Control': 'no-cache' },
+                signal: controller.signal
+              });
+              clearTimeout(timeoutId);
+              if (res.ok) {
+                jsonRes = await res.json();
+                break;
+              }
+            } catch (e) {
+              // Try next endpoint or fallback to static files
+            }
+          }
+
+          if (jsonRes) {
             if (jsonRes.data && Array.isArray(jsonRes.data) && jsonRes.data.length > 0) {
               persistData(jsonRes.data);
             }
@@ -8519,71 +8543,75 @@ function ReadingDashboardView({ data, updateItem, deleteItem, insertItem, moveIt
             }
             setIsServerLive(true);
             setLastSyncTime(jsonRes.synced_at || new Date().toLocaleTimeString('ko-KR'));
-            if (force) {
-              setSyncNotice('구글 시트 최신 운동 & 건강 데이터 동기화 완료!');
-              setTimeout(() => setSyncNotice(''), 3000);
+            syncSuccess = true;
+            syncMsg = '구글 시트 실시간 데이터 동기화 완료!';
+          } else {
+            // 2. Static hosting fallback (e.g. GitHub Pages) with cache buster
+            let didFetchStatic = false;
+            try {
+              const staticRes = await fetch('./workout_data.json?t=' + Date.now());
+              if (staticRes.ok) {
+                const staticJson = await staticRes.json();
+                if (Array.isArray(staticJson) && staticJson.length > 0) {
+                  persistData(staticJson);
+                  didFetchStatic = true;
+                }
+              }
+            } catch (err) {}
+
+            try {
+              const healthRes = await fetch('./health_data.json?t=' + Date.now());
+              if (healthRes.ok) {
+                const healthJson = await healthRes.json();
+                if (Array.isArray(healthJson) && healthJson.length > 0) {
+                  persistHealthData(healthJson);
+                  didFetchStatic = true;
+                }
+              }
+            } catch (err) {}
+
+            try {
+              const readingRes = await fetch('./reading_data.json?t=' + Date.now());
+              if (readingRes.ok) {
+                const readingJson = await readingRes.json();
+                if (Array.isArray(readingJson) && readingJson.length > 0) {
+                  persistReadingData(readingJson);
+                  didFetchStatic = true;
+                }
+              }
+            } catch (err) {}
+
+            if (didFetchStatic) {
+              setIsServerLive(true);
+              setLastSyncTime('배포 데이터 동기화 완료');
+              syncSuccess = true;
+              syncMsg = '최신 데이터 동기화 완료!';
+            } else {
+              setIsServerLive(false);
             }
-            return;
           }
         } catch (e) {
-          // Local sync server unavailable; fallback to static JSON files
-        }
-
-        // Static hosting fallback (e.g. GitHub Pages)
-        let didFetchStatic = false;
-        try {
-          const staticRes = await fetch('./workout_data.json?t=' + Date.now());
-          if (staticRes.ok) {
-            const staticJson = await staticRes.json();
-            if (Array.isArray(staticJson) && staticJson.length > 0) {
-              persistData(staticJson);
-              didFetchStatic = true;
-            }
-          }
-        } catch (err) {}
-
-        try {
-          const healthRes = await fetch('./health_data.json?t=' + Date.now());
-          if (healthRes.ok) {
-            const healthJson = await healthRes.json();
-            if (Array.isArray(healthJson) && healthJson.length > 0) {
-              persistHealthData(healthJson);
-              didFetchStatic = true;
-            }
-          }
-        } catch (err) {}
-
-        try {
-          const readingRes = await fetch('./reading_data.json?t=' + Date.now());
-          if (readingRes.ok) {
-            const readingJson = await readingRes.json();
-            if (Array.isArray(readingJson) && readingJson.length > 0) {
-              persistReadingData(readingJson);
-              didFetchStatic = true;
-            }
-          }
-        } catch (err) {}
-
-        if (didFetchStatic) {
-          setIsServerLive(true);
-          setLastSyncTime('정적 배포 동기화 완료');
+          console.warn('[Sync] Fetch failed:', e);
+        } finally {
           if (force) {
-            setSyncNotice('최신 배포 데이터 동기화 완료!');
-            setTimeout(() => setSyncNotice(''), 3000);
+            const elapsed = Date.now() - startTime;
+            const remaining = Math.max(0, 600 - elapsed);
+            setTimeout(() => {
+              setIsSyncing(false);
+              if (syncSuccess && syncMsg) {
+                setSyncNotice(syncMsg);
+                setTimeout(() => setSyncNotice(''), 3500);
+              }
+            }, remaining);
           }
-          return;
         }
-
-        setIsServerLive(false);
-        setIsSyncing(false);
       };
 
       useEffect(() => {
         fetchServerData(false);
-        const interval = setInterval(() => {
-          fetchServerData(false);
-        }, 15000);
-        return () => clearInterval(interval);
+        const onFocus = () => fetchServerData(false);
+        window.addEventListener('focus', onFocus);
+        return () => window.removeEventListener('focus', onFocus);
       }, []);
 
       const updateItem = (index_, newRow) => {
@@ -8630,7 +8658,7 @@ function ReadingDashboardView({ data, updateItem, deleteItem, insertItem, moveIt
         if (confirm('구글 시트의 원본 데이터로 초기화하시겠습니까? 로컬에서 수정한 내용은 리셋됩니다.')) {
           localStorage.removeItem('workout_dashboard_data');
           localStorage.removeItem('health_dashboard_data');
-          localStorage.removeItem('tutoring_reading_dashboard_data_v3');
+          localStorage.removeItem('tutoring_reading_dashboard_data_v4');
           persistData(INITIAL_REAL_DATA);
           persistHealthData(INITIAL_HEALTH_DATA);
           persistReadingData(INITIAL_READING_DATA);

@@ -2035,6 +2035,14 @@ def main():
         # 8. Send Email
         print("[Info] Sending dashboard email to younghum.han@hd.com...")
         send_dashboard_email(gmail_service, 'younghum.han@hd.com', output_path)
+
+        # 9. Daily Google Sheets Sync for Workout, Health & Reading Dashboards
+        try:
+            from daily_sheets_sync import sync_all
+            print("[DailySync] Running daily sync for Workout, Health & Reading Dashboards...")
+            sync_all(push_to_git=True)
+        except Exception as e:
+            print(f"[DailySync Error] Failed daily sheets sync: {e}")
         
     except Exception as e:
         print(f"[Error] Failed to render HTML template: {e}")

@@ -7684,7 +7684,7 @@ function ReadingDashboardView({ data, updateItem, deleteItem, insertItem, moveIt
         }
 
         setTimeout(() => {
-          setIsSyncing(false);
+          setLocalIsSyncing(false);
           setSyncNotice(`시트 최신 데이터 실시간 동기화 완료: 총 ${validCount}건 연결됨 (최신: ${targetSession} "${targetTitle}" · ${nowStr})`);
           setTimeout(() => {
             setSyncNotice('');
@@ -10382,6 +10382,29 @@ function ReadingDashboardView({ data, updateItem, deleteItem, insertItem, moveIt
       86,
       "A+"
     ]
+  },
+  {
+    "index_": 17,
+    "row": [
+      "17회차",
+      "2026-09-25",
+      "[지리/교양] 세상에서 가장 재미있는 세계지도",
+      "키즈가디언(재미있는 지리학회)",
+      "우주에서 국경이 보이지 않을 것 같지만, 미국(갈색 농지)과 멕시코(노란 황무지)처럼 토지 이용 차이로 선명히 보임. 또한 독립의 상징인 '워싱턴'이라는 지명이 미국 내 1,000곳이 넘는 등 지도 속 숨은 인문·자연 지리의 원리를 흥미진진하게 소개함.",
+      "\"우주선이 보내오는 그런 육지의 영상은 보면서 '우주선에서 보이는 육지에는 인류가 제멋대로 그어놓은 국경 따위는 존재하지 않는다' 라고 하는 사람도 있다.\"",
+      "기존 지리책들의 단순 나열식(어디는 춥고 경치 좋다는 식) 구성을 탈피해, 우리가 몰랐던 204가지 특이한 수수께끼를 다뤄 유익함. 특히 에베레스트산이 왜 높아졌는지에 대한 심오한 과학적 원리가 가장 흥미로웠음.",
+      "(미작성 - 보완 필요)",
+      "우주에서 본 미국-멕시코 국경선, 워싱턴 지명의 다의성 등 단순 지리 상식을 넘어 인과적 원리를 완벽히 파악함. 기존 지리 서적의 한계를 짚어낸 도서 구성 비교 비평과 에베레스트 융기 등 지구과학적 호기심 발현이 매우 탁월함.",
+      "인상 깊은 문장에서 '인간이 제멋대로 그어놓은 국경'이라는 훌륭한 철학적 통찰을 발견했으므로, 이를 비워둔 마지막 칸에 \"지도 너머 전 지구적 시각이나 세계 시민으로서의 열린 태도\"로 내면화하는 글쓰기 집중 지도 필요.",
+      "맥시코→멕시코, 둘러 보여→둘러보며, 알고도→말고도, 워싱턴 D.C,→워싱턴 D.C.,.",
+      "\"우주에서 미국과 멕시코 국경이 보이는 이유와 워싱턴 지명의 유래를 명쾌하게 정리한 부분이 정말 돋보여! 특히 뻔한 지리책들과 이 책의 차이점을 짚어낸 점은 전문 비평가 같았어. 인상 깊은 문장으로 뽑은 '인간이 그어놓은 국경이 없는 우주적 시선'에 대해 초원이의 생각을 마지막 칸에 한 줄만 채워보면 완벽한 글이 될 거야!\"",
+      25,
+      25,
+      12,
+      21,
+      83,
+      "A"
+    ]
   }
 ];
 
@@ -10422,7 +10445,7 @@ function ReadingDashboardView({ data, updateItem, deleteItem, insertItem, moveIt
       // Reading & Essay Tutoring Data State
       const [readingData, setReadingData] = useState(() => {
         try {
-          const saved = localStorage.getItem('tutoring_reading_dashboard_data_v3');
+          const saved = localStorage.getItem('tutoring_reading_dashboard_data_v4');
           if (saved) {
             const parsed = JSON.parse(saved);
             if (Array.isArray(parsed) && parsed.length >= INITIAL_READING_DATA.length) {
@@ -10455,7 +10478,7 @@ function ReadingDashboardView({ data, updateItem, deleteItem, insertItem, moveIt
       const persistReadingData = (newData) => {
         setReadingData(newData);
         try {
-          localStorage.setItem('tutoring_reading_dashboard_data_v3', JSON.stringify(newData));
+          localStorage.setItem('tutoring_reading_dashboard_data_v4', JSON.stringify(newData));
         } catch (e) {}
       };
 
@@ -10494,17 +10517,41 @@ function ReadingDashboardView({ data, updateItem, deleteItem, insertItem, moveIt
       };
 
       const fetchServerData = async (force = false) => {
-        setIsSyncing(true);
-        try {
-          const url = force ? '/api/sync' : '/api/data';
-          const method = force ? 'POST' : 'GET';
-          const res = await fetch(url, {
-            method,
-            headers: { 'Cache-Control': 'no-cache' }
-          });
+        if (force) {
+          setIsSyncing(true);
+        }
+        const startTime = Date.now();
+        let syncSuccess = false;
+        let syncMsg = '';
 
-          if (res.ok) {
-            const jsonRes = await res.json();
+        try {
+          // 1. Try local sync server endpoints (same-origin /api/sync or local port 8082)
+          const endpoints = [
+            { url: force ? '/api/sync' : '/api/data', method: force ? 'POST' : 'GET' },
+            { url: force ? 'http://localhost:8082/api/sync' : 'http://localhost:8082/api/data', method: force ? 'POST' : 'GET' }
+          ];
+
+          let jsonRes = null;
+          for (const ep of endpoints) {
+            try {
+              const controller = new AbortController();
+              const timeoutId = setTimeout(() => controller.abort(), 2000);
+              const res = await fetch(ep.url, {
+                method: ep.method,
+                headers: { 'Cache-Control': 'no-cache' },
+                signal: controller.signal
+              });
+              clearTimeout(timeoutId);
+              if (res.ok) {
+                jsonRes = await res.json();
+                break;
+              }
+            } catch (e) {
+              // Try next endpoint or fallback to static files
+            }
+          }
+
+          if (jsonRes) {
             if (jsonRes.data && Array.isArray(jsonRes.data) && jsonRes.data.length > 0) {
               persistData(jsonRes.data);
             }
@@ -10516,71 +10563,75 @@ function ReadingDashboardView({ data, updateItem, deleteItem, insertItem, moveIt
             }
             setIsServerLive(true);
             setLastSyncTime(jsonRes.synced_at || new Date().toLocaleTimeString('ko-KR'));
-            if (force) {
-              setSyncNotice('구글 시트 최신 운동 & 건강 데이터 동기화 완료!');
-              setTimeout(() => setSyncNotice(''), 3000);
+            syncSuccess = true;
+            syncMsg = '구글 시트 실시간 데이터 동기화 완료!';
+          } else {
+            // 2. Static hosting fallback (e.g. GitHub Pages) with cache buster
+            let didFetchStatic = false;
+            try {
+              const staticRes = await fetch('./workout_data.json?t=' + Date.now());
+              if (staticRes.ok) {
+                const staticJson = await staticRes.json();
+                if (Array.isArray(staticJson) && staticJson.length > 0) {
+                  persistData(staticJson);
+                  didFetchStatic = true;
+                }
+              }
+            } catch (err) {}
+
+            try {
+              const healthRes = await fetch('./health_data.json?t=' + Date.now());
+              if (healthRes.ok) {
+                const healthJson = await healthRes.json();
+                if (Array.isArray(healthJson) && healthJson.length > 0) {
+                  persistHealthData(healthJson);
+                  didFetchStatic = true;
+                }
+              }
+            } catch (err) {}
+
+            try {
+              const readingRes = await fetch('./reading_data.json?t=' + Date.now());
+              if (readingRes.ok) {
+                const readingJson = await readingRes.json();
+                if (Array.isArray(readingJson) && readingJson.length > 0) {
+                  persistReadingData(readingJson);
+                  didFetchStatic = true;
+                }
+              }
+            } catch (err) {}
+
+            if (didFetchStatic) {
+              setIsServerLive(true);
+              setLastSyncTime('배포 데이터 동기화 완료');
+              syncSuccess = true;
+              syncMsg = '최신 데이터 동기화 완료!';
+            } else {
+              setIsServerLive(false);
             }
-            return;
           }
         } catch (e) {
-          // Local sync server unavailable; fallback to static JSON files
-        }
-
-        // Static hosting fallback (e.g. GitHub Pages)
-        let didFetchStatic = false;
-        try {
-          const staticRes = await fetch('./workout_data.json?t=' + Date.now());
-          if (staticRes.ok) {
-            const staticJson = await staticRes.json();
-            if (Array.isArray(staticJson) && staticJson.length > 0) {
-              persistData(staticJson);
-              didFetchStatic = true;
-            }
-          }
-        } catch (err) {}
-
-        try {
-          const healthRes = await fetch('./health_data.json?t=' + Date.now());
-          if (healthRes.ok) {
-            const healthJson = await healthRes.json();
-            if (Array.isArray(healthJson) && healthJson.length > 0) {
-              persistHealthData(healthJson);
-              didFetchStatic = true;
-            }
-          }
-        } catch (err) {}
-
-        try {
-          const readingRes = await fetch('./reading_data.json?t=' + Date.now());
-          if (readingRes.ok) {
-            const readingJson = await readingRes.json();
-            if (Array.isArray(readingJson) && readingJson.length > 0) {
-              persistReadingData(readingJson);
-              didFetchStatic = true;
-            }
-          }
-        } catch (err) {}
-
-        if (didFetchStatic) {
-          setIsServerLive(true);
-          setLastSyncTime('정적 배포 동기화 완료');
+          console.warn('[Sync] Fetch failed:', e);
+        } finally {
           if (force) {
-            setSyncNotice('최신 배포 데이터 동기화 완료!');
-            setTimeout(() => setSyncNotice(''), 3000);
+            const elapsed = Date.now() - startTime;
+            const remaining = Math.max(0, 600 - elapsed);
+            setTimeout(() => {
+              setIsSyncing(false);
+              if (syncSuccess && syncMsg) {
+                setSyncNotice(syncMsg);
+                setTimeout(() => setSyncNotice(''), 3500);
+              }
+            }, remaining);
           }
-          return;
         }
-
-        setIsServerLive(false);
-        setIsSyncing(false);
       };
 
       useEffect(() => {
         fetchServerData(false);
-        const interval = setInterval(() => {
-          fetchServerData(false);
-        }, 15000);
-        return () => clearInterval(interval);
+        const onFocus = () => fetchServerData(false);
+        window.addEventListener('focus', onFocus);
+        return () => window.removeEventListener('focus', onFocus);
       }, []);
 
       const updateItem = (index_, newRow) => {
@@ -10627,7 +10678,7 @@ function ReadingDashboardView({ data, updateItem, deleteItem, insertItem, moveIt
         if (confirm('구글 시트의 원본 데이터로 초기화하시겠습니까? 로컬에서 수정한 내용은 리셋됩니다.')) {
           localStorage.removeItem('workout_dashboard_data');
           localStorage.removeItem('health_dashboard_data');
-          localStorage.removeItem('tutoring_reading_dashboard_data_v3');
+          localStorage.removeItem('tutoring_reading_dashboard_data_v4');
           persistData(INITIAL_REAL_DATA);
           persistHealthData(INITIAL_HEALTH_DATA);
           persistReadingData(INITIAL_READING_DATA);
