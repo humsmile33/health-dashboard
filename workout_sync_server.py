@@ -173,6 +173,29 @@ def fetch_and_update_from_sheets():
         except Exception as e:
             pass
 
+        # Also fetch reading tutoring data if available
+        try:
+            r_res = service.spreadsheets().values().get(
+                spreadsheetId=READING_SPREADSHEET_ID,
+                range=READING_RANGE,
+                valueRenderOption='UNFORMATTED_VALUE',
+                dateTimeRenderOption='FORMATTED_STRING'
+            ).execute()
+            r_values = r_res.get('values', [])
+            if r_values:
+                formatted_reading = []
+                for idx, r_row in enumerate(r_values):
+                    c_row = ["" if c is None else c for c in r_row]
+                    if len(c_row) < 18:
+                        c_row.extend([""] * (18 - len(c_row)))
+                    formatted_reading.append({"index_": idx, "row": c_row})
+                with open(READING_FILE, "w", encoding="utf-8") as f:
+                    json.dump(formatted_reading, f, ensure_ascii=False, indent=2)
+                with cache_lock:
+                    cached_reading_records = formatted_reading
+        except Exception as e:
+            print(f"[Warn] Reading sheet sync error: {e}")
+
         with cache_lock:
             cached_records = formatted
             last_data_hash = cur_hash
@@ -244,6 +267,7 @@ class SyncServerHandler(SimpleHTTPRequestHandler):
             with cache_lock:
                 data_copy = list(cached_records)
                 h_copy = list(cached_health_records)
+                r_copy = list(cached_reading_records)
                 ts = last_sync_timestamp
                 st = sync_status
                 sc = sync_count
@@ -257,7 +281,8 @@ class SyncServerHandler(SimpleHTTPRequestHandler):
                 "sheet_name": "운동 기록",
                 "count": len(data_copy),
                 "data": data_copy,
-                "health_data": h_copy
+                "health_data": h_copy,
+                "reading_data": r_copy
             }
             body = json.dumps(response_data, ensure_ascii=False).encode('utf-8')
             self.send_response(200)

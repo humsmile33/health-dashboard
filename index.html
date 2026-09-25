@@ -233,6 +233,9 @@
         <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><polyline points="16 11 18 13 22 9"/>
       </svg>
     );
+    const PieChart = ({ className = "w-4 h-4", ...p }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...p}><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg>
+    );
 
     // --- HELPER UTILITIES ---
     const fixMojibake = (val) => {
@@ -7227,6 +7230,215 @@
 
     // --- Main App Component ---
 
+    // --- Reading Logs Table Component (for 'logs' tab) ---
+    function ReadingLogsTable({
+      records,
+      onSelectRecord,
+      onEdit,
+      onDelete,
+      getCategoryTheme,
+      getGradeTheme
+    }) {
+      const [filterCategory, setFilterCategory] = useState('전체');
+      const [filterQuery, setFilterQuery] = useState('');
+      const [sortCol, setSortCol] = useState('session'); // 'session' | 'date' | 'score'
+      const [sortDir, setSortDir] = useState('desc');
+
+      const categories = useMemo(() => {
+        const set = new Set(['전체']);
+        records.forEach(r => { if (r.category) set.add(r.category); });
+        return Array.from(set);
+      }, [records]);
+
+      const filtered = useMemo(() => {
+        let list = records.filter(r => {
+          if (filterCategory !== '전체' && r.category !== filterCategory) return false;
+          if (filterQuery.trim()) {
+            const q = filterQuery.toLowerCase();
+            const matchTitle = (r.bookTitle || '').toLowerCase().includes(q);
+            const matchAuthor = (r.author || '').toLowerCase().includes(q);
+            const matchSummary = (r.summary || '').toLowerCase().includes(q);
+            if (!matchTitle && !matchAuthor && !matchSummary) return false;
+          }
+          return true;
+        });
+
+        return list.sort((a, b) => {
+          let cmp = 0;
+          if (sortCol === 'session') {
+            cmp = (a.sessionNum || 0) - (b.sessionNum || 0);
+          } else if (sortCol === 'date') {
+            cmp = (a.rawDate || '').localeCompare(b.rawDate || '');
+          } else if (sortCol === 'score') {
+            cmp = (a.totalScore || 0) - (b.totalScore || 0);
+          }
+          return sortDir === 'desc' ? -cmp : cmp;
+        });
+      }, [records, filterCategory, filterQuery, sortCol, sortDir]);
+
+      return (
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden space-y-4 p-5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200">
+            <div>
+              <div className="flex items-center gap-2">
+                <FileSpreadsheet className="w-5 h-5 text-indigo-600" />
+                <h2 className="text-base sm:text-lg font-black text-slate-900">누적 독후감 전수 이력 대장</h2>
+                <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-indigo-100 text-indigo-900">
+                  총 {filtered.length}건 / {records.length}건
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 font-bold mt-0.5">
+                구글 스프레드시트 '독후감 이력관리' 시트와 실시간 연동된 전수 기록입니다.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2 flex-wrap">
+              <div className="relative">
+                <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="도서명 또는 저자 검색..."
+                  value={filterQuery}
+                  onChange={e => setFilterQuery(e.target.value)}
+                  className="pl-8 pr-7 py-1.5 text-xs font-bold bg-slate-50 border border-slate-300 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-indigo-500 text-slate-900 w-48 sm:w-56"
+                />
+                {filterQuery && (
+                  <button
+                    onClick={() => setFilterQuery('')}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                )}
+              </div>
+
+              <div className="flex items-center gap-1 overflow-x-auto text-xs font-bold no-scrollbar">
+                {categories.map(cat => (
+                  <button
+                    key={cat}
+                    onClick={() => setFilterCategory(cat)}
+                    className={`px-2.5 py-1 rounded text-xs transition-colors cursor-pointer ${
+                      filterCategory === cat
+                        ? 'bg-indigo-600 text-white font-black'
+                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    }`}
+                  >
+                    {cat}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="overflow-x-auto scrollbar-thin">
+            <table className="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr className="bg-slate-50/80 border-b border-slate-200 text-slate-600 font-black">
+                  <th className="py-2.5 px-3 whitespace-nowrap cursor-pointer hover:text-indigo-600" onClick={() => { setSortCol('session'); setSortDir(d => d === 'asc' ? 'desc' : 'asc'); }}>
+                    회차 {sortCol === 'session' ? (sortDir === 'desc' ? '▼' : '▲') : ''}
+                  </th>
+                  <th className="py-2.5 px-3 whitespace-nowrap cursor-pointer hover:text-indigo-600" onClick={() => { setSortCol('date'); setSortDir(d => d === 'asc' ? 'desc' : 'asc'); }}>
+                    기록일 {sortCol === 'date' ? (sortDir === 'desc' ? '▼' : '▲') : ''}
+                  </th>
+                  <th className="py-2.5 px-3 whitespace-nowrap">분야</th>
+                  <th className="py-2.5 px-3 whitespace-nowrap">도서명 & 저자</th>
+                  <th className="py-2.5 px-3 whitespace-nowrap cursor-pointer hover:text-indigo-600" onClick={() => { setSortCol('score'); setSortDir(d => d === 'asc' ? 'desc' : 'asc'); }}>
+                    성취도 {sortCol === 'score' ? (sortDir === 'desc' ? '▼' : '▲') : ''}
+                  </th>
+                  <th className="py-2.5 px-3 whitespace-nowrap min-w-[200px]">인상 깊은 문장 / 느낀 점</th>
+                  <th className="py-2.5 px-3 whitespace-nowrap">맞춤법 교정</th>
+                  <th className="py-2.5 px-3 whitespace-nowrap text-right">관리</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {filtered.map(r => {
+                  const theme = getCategoryTheme(r.category);
+                  const gradeTheme = getGradeTheme(r.grade);
+                  return (
+                    <tr key={r.index_} className="hover:bg-indigo-50/40 transition-colors group">
+                      <td className="py-2.5 px-3 font-mono font-black text-slate-900 whitespace-nowrap">
+                        <span className="bg-slate-100 px-2 py-0.5 rounded text-indigo-900 border border-slate-200">
+                          {r.session || `${r.index_}회차`}
+                        </span>
+                      </td>
+                      <td className="py-2.5 px-3 font-mono text-slate-600 whitespace-nowrap">
+                        {r.rawDate || '-'}
+                      </td>
+                      <td className="py-2.5 px-3 whitespace-nowrap">
+                        <span className={`px-2 py-0.5 rounded text-[11px] font-bold border ${theme.bg} ${theme.text} ${theme.border}`}>
+                          {r.category}
+                        </span>
+                      </td>
+                      <td className="py-2.5 px-3">
+                        <div className="font-extrabold text-slate-900 line-clamp-1">{r.bookTitle}</div>
+                        <div className="text-[11px] text-slate-500 font-medium">{r.author}</div>
+                      </td>
+                      <td className="py-2.5 px-3 whitespace-nowrap">
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-mono font-black text-slate-900">{r.totalScore !== null ? `${r.totalScore}점` : '-'}</span>
+                          {r.grade && (
+                            <span className={`px-1.5 py-0.5 rounded text-[10px] font-black text-white ${gradeTheme.badgeBg}`}>
+                              {r.grade}
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="py-2.5 px-3 text-slate-600 max-w-xs">
+                        <p className="line-clamp-1 text-[11px] italic text-slate-500">{r.quote || r.studentThoughts || r.summary}</p>
+                      </td>
+                      <td className="py-2.5 px-3 whitespace-nowrap">
+                        {r.spellingCorrection && r.spellingCorrection.trim().length > 0 && !r.spellingCorrection.includes('없음') ? (
+                          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200" title={r.spellingCorrection}>
+                            <AlertCircle className="w-3 h-3 text-amber-600 shrink-0" />
+                            <span>교정 항목</span>
+                          </span>
+                        ) : (
+                          <span className="text-[11px] text-emerald-600 font-bold flex items-center gap-1">
+                            <CheckCircle2 className="w-3 h-3 text-emerald-500" />
+                            <span>정상</span>
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-2.5 px-3 text-right whitespace-nowrap">
+                        <div className="inline-flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => onSelectRecord(r.index_)}
+                            className="p-1.5 rounded-lg text-indigo-700 hover:bg-indigo-100 transition-colors cursor-pointer font-bold text-xs"
+                            title="상세 보기"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => onEdit(r)}
+                            className="p-1.5 rounded-lg text-slate-600 hover:text-indigo-700 hover:bg-slate-100 transition-colors cursor-pointer"
+                            title="수정"
+                          >
+                            <Edit3 className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => onDelete(r.index_)}
+                            className="p-1.5 rounded-lg text-rose-500 hover:text-rose-700 hover:bg-rose-50 transition-colors cursor-pointer"
+                            title="삭제"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      );
+    }
+
+
+    // --- Main Reading & Tutoring Dashboard View ---
 function ReadingDashboardView({ data, updateItem, deleteItem, insertItem, moveItem, followLink, onManualSync, isLiveConnected, lastSyncTime: parentSyncTime, isSyncing: parentIsSyncing, syncNotice: parentSyncNotice, onChangeSection, currentSection }) {
       const [refreshTick, setRefreshTick] = useState(0);
 
@@ -7378,6 +7590,7 @@ function ReadingDashboardView({ data, updateItem, deleteItem, insertItem, moveIt
           });
       }, [cleanData, data, headerInfo, colIndexes, refreshTick]);
 
+      const [activeReadingTab, setActiveReadingTab] = useState('overview'); // 'overview' | 'trends' | 'logs'
       const [selectedItemIndex, setSelectedItemIndex] = useState(null);
       const [searchQuery, setSearchQuery] = useState('');
       const [selectedCategory, setSelectedCategory] = useState('전체');
@@ -7872,120 +8085,146 @@ function ReadingDashboardView({ data, updateItem, deleteItem, insertItem, moveIt
       };
 
       return (
-        <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col antialiased font-sans">
+        <div className="min-h-screen bg-slate-50/80 text-slate-900 flex flex-col antialiased font-sans">
           {/* Top Header */}
           <header className="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-wrap items-center justify-between gap-4">
-              <div className="flex items-center gap-3.5">
-                <div className="w-11 h-11 rounded-xl bg-indigo-600 flex items-center justify-center text-white shadow-sm shrink-0">
-                  <GraduationCap className="w-6 h-6" />
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between py-3.5 gap-3">
+                {/* Left: Icon & Titles */}
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 text-white flex items-center justify-center shadow-md shadow-indigo-500/20">
+                    <BookOpen className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2.5 flex-wrap">
+                      <h1 className="text-xl sm:text-2xl font-black text-slate-950 tracking-tight">
+                        독서 & 논술 지도 튜터링 대시보드
+                      </h1>
+                      <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-black bg-indigo-100 text-indigo-900 border border-indigo-300 shadow-xs">
+                        <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse"></span>
+                        <span>실시간 시트 동기화 ({parentSyncTime || lastSyncTime || '최신'})</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2.5 text-sm font-bold text-slate-600 mt-0.5 flex-wrap">
+                      <span>학생 맞춤 1:1 심층 코칭</span>
+                      <span>•</span>
+                      <span>최신 완료: <strong className="text-indigo-700 font-mono font-black">{stats.latestSession || `${records.length}회차`} ({stats.latestDateDisplay || stats.latestDate || '-'})</strong></span>
+                      <span>•</span>
+                      <span>총 <strong className="text-indigo-700 font-mono font-black">{records.length}</strong>편 완독 및 지도 누적</span>
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <div className="flex items-center gap-2.5 flex-wrap">
-                {/* 3-Way Portal Dashboard Selector */}
-                {onChangeSection && (
-                  <div className="inline-flex items-center p-1 rounded-xl bg-slate-100 border border-slate-300 text-xs font-bold shadow-xs">
-                    <button
-                      type="button"
-                      onClick={() => onChangeSection('workout')}
-                      className="px-2.5 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 text-slate-600 hover:text-slate-900 font-bold"
-                      title="운동 관리 대시보드로 이동"
-                    >
-                      <Dumbbell className="w-3.5 h-3.5 text-emerald-600" />
-                      <span>운동</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => onChangeSection('health')}
-                      className="px-2.5 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 text-slate-600 hover:text-slate-900 font-bold"
-                      title="건강 종합관리 대시보드로 이동"
-                    >
-                      <Heart className="w-3.5 h-3.5 text-rose-500" />
-                      <span>건강</span>
-                    </button>
-                    <button
-                      type="button"
-                      className="px-2.5 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 bg-indigo-600 text-white shadow-sm font-black"
-                      title="현재: 독서 & 논술 지도"
-                    >
-                      <BookOpen className="w-3.5 h-3.5" />
-                      <span>독서 & 논술</span>
-                    </button>
-                  </div>
-                )}
-                    <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">
-                      독서 & 논술 지도 튜터링 대시보드
-                    </h1>
-                    <span className="px-2.5 py-0.5 text-xs sm:text-sm font-bold rounded-full bg-indigo-100 text-indigo-900">
-                      학생 맞춤 코칭
-                    </span>
-                    {latestRecord && (
-                      <span className="px-2.5 py-0.5 text-xs font-bold rounded-full bg-emerald-100 text-emerald-900 border border-emerald-300 flex items-center gap-1.5 shadow-xs">
-                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                        최신 데이터: {stats.latestSession} ({stats.latestDate})
-                        <span className="text-emerald-700 font-mono text-[11px] ml-0.5 hidden sm:inline">· 동기화 {lastSyncTime}</span>
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-sm font-bold text-slate-700 mt-0.5">
-                    일별·월별 독서 진도 및 4대 영역별 성취 점수·등급 성장 추이 시각화
-                  </p>
+
+                {/* Right: 3-Way Portal Selector & Actions */}
+                <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end flex-wrap">
+                  {/* 3-Way Portal Dashboard Selector */}
+                  {onChangeSection && (
+                    <div className="inline-flex items-center p-1 rounded-xl bg-slate-100 border border-slate-300 text-xs font-bold shadow-xs">
+                      <button
+                        type="button"
+                        onClick={() => onChangeSection('workout')}
+                        className="px-2.5 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 text-slate-600 hover:text-slate-900 font-bold"
+                        title="운동 관리 대시보드로 이동"
+                      >
+                        <Dumbbell className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>운동</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => onChangeSection('health')}
+                        className="px-2.5 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 text-slate-600 hover:text-slate-900 font-bold"
+                        title="건강 종합관리 대시보드로 이동"
+                      >
+                        <Heart className="w-3.5 h-3.5 text-rose-500" />
+                        <span>건강</span>
+                      </button>
+                      <button
+                        type="button"
+                        className="px-2.5 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 bg-indigo-600 text-white shadow-sm font-black"
+                        title="현재: 독서 & 논술 지도"
+                      >
+                        <BookOpen className="w-3.5 h-3.5" />
+                        <span>독서 & 논술</span>
+                      </button>
+                    </div>
+                  )}
+
+                  <button
+                    onClick={openAddModal}
+                    className="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black flex items-center gap-1.5 shadow-md shadow-indigo-600/20 transition-all cursor-pointer"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>새 독후감 등록</span>
+                  </button>
+
+                  <button
+                    onClick={handleManualSync}
+                    disabled={isSyncing}
+                    className="px-3 py-2 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs font-black flex items-center gap-1.5 transition-all shadow-xs cursor-pointer disabled:opacity-60"
+                    title="구글 스프레드시트 최신 데이터 동기화"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 text-indigo-600 ${isSyncing ? 'animate-spin' : ''}`} />
+                    <span>{isSyncing ? '동기화 중...' : '동기화 새로고침'}</span>
+                  </button>
+
+                  <a
+                    href="https://docs.google.com/spreadsheets/d/1cT7wCoT8aDh01ofDRb5Sh0ANHElVRZSro5TH1-IH6d0/edit?usp=sharing"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-3 py-2 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs font-black flex items-center gap-1.5 transition-all shadow-xs cursor-pointer"
+                    title="구글 스프레드시트 원본 '독후감 이력관리' 새 탭에서 열기"
+                  >
+                    <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
+                    <span className="hidden sm:inline">구글 시트 원본</span>
+                    <ArrowUpRight className="w-3.5 h-3.5 text-slate-400" />
+                  </a>
                 </div>
               </div>
 
-              {/* Top Actions */}
-              <div className="flex items-center gap-2.5 flex-wrap">
-                <a
-                  href="https://docs.google.com/spreadsheets/d/1cT7wCoT8aDh01ofDRb5Sh0ANHElVRZSro5TH1-IH6d0/edit?usp=sharing"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-1.5 px-3.5 py-2 text-xs sm:text-sm font-bold rounded-lg text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 shadow-xs transition-all active:scale-95 cursor-pointer"
-                  title="구글 스프레드시트 원본 '독후감 이력관리' 새 탭에서 열기"
+              {/* Navigation Tabs (헤드라인 하단 버튼식 탭 - 운동/건강 대시보드와 동일한 UX) */}
+              <nav className="flex items-center gap-1 sm:gap-2 border-t border-slate-200 pt-2 pb-0.5 overflow-x-auto scrollbar-thin">
+                <button
+                  type="button"
+                  onClick={() => setActiveReadingTab('overview')}
+                  className={`flex items-center gap-1.5 px-3 py-2 sm:px-3.5 sm:py-2.5 text-xs sm:text-sm font-bold rounded-xl transition-colors cursor-pointer border-b-2 shrink-0 whitespace-nowrap ${
+                    activeReadingTab === 'overview'
+                      ? 'border-indigo-600 text-indigo-900 bg-indigo-50/80 font-black'
+                      : 'border-transparent text-slate-700 hover:text-slate-950 hover:bg-slate-100'
+                  }`}
                 >
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                  <span>구글 시트 열기</span>
-                  <ArrowUpRight className="w-4 h-4 text-emerald-600" />
-                </a>
+                  <BookOpen className="w-4 h-4 text-indigo-600 stroke-[2.5]" />
+                  <span>독서 기록 & 코칭 상세</span>
+                </button>
 
                 <button
                   type="button"
-                  onClick={handleManualSync}
-                  disabled={isSyncing}
-                  className="flex items-center gap-1.5 px-3.5 py-2 text-xs sm:text-sm font-bold rounded-lg text-indigo-800 bg-white hover:bg-indigo-50 border border-indigo-200 shadow-xs transition-all active:scale-95 cursor-pointer disabled:opacity-60"
-                  title="구글 스프레드시트 최신 데이터 즉시 확인 및 실시간 동기화"
+                  onClick={() => setActiveReadingTab('trends')}
+                  className={`flex items-center gap-1.5 px-3 py-2 sm:px-3.5 sm:py-2.5 text-xs sm:text-sm font-bold rounded-xl transition-colors cursor-pointer border-b-2 shrink-0 whitespace-nowrap ${
+                    activeReadingTab === 'trends'
+                      ? 'border-indigo-600 text-indigo-900 bg-indigo-50/80 font-black'
+                      : 'border-transparent text-slate-700 hover:text-slate-950 hover:bg-slate-100'
+                  }`}
                 >
-                  <RefreshCw className={`w-4 h-4 text-indigo-600 ${isSyncing ? 'animate-spin' : ''}`} />
-                  <span>{isSyncing ? '구글 시트 동기화 중...' : '데이터 동기화 (Sync)'}</span>
+                  <TrendingUp className="w-4 h-4 text-emerald-600 stroke-[2.5]" />
+                  <span>월별 진도 및 성장 추이</span>
                 </button>
 
-                {selectedRecord && latestRecord && selectedRecord.index_ !== latestRecord.index_ && (
-                  <button
-                    onClick={() => setSelectedItemIndex(latestRecord.index_)}
-                    className="flex items-center gap-1.5 px-3 py-2 text-xs sm:text-sm font-bold rounded-lg text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 transition-colors cursor-pointer"
-                    title="가장 최근 입력된 독후감 데이터로 바로 이동"
-                  >
-                    <ArrowUpRight className="w-4 h-4" />
-                    <span>최신 기록({latestRecord.session}) 보기</span>
-                  </button>
-                )}
-                {(activeMonthFilter || selectedCategory !== '전체' || searchQuery) && (
-                  <button
-                    onClick={clearFilters}
-                    className="flex items-center gap-1.5 px-3 py-2 text-sm font-bold rounded-lg text-slate-800 bg-slate-100 hover:bg-slate-200 transition-colors"
-                    title="모든 필터 초기화"
-                  >
-                    <RotateCcw className="w-4 h-4" />
-                    <span>필터 초기화</span>
-                  </button>
-                )}
                 <button
-                  onClick={openAddModal}
-                  className="flex items-center gap-2 px-4 py-2.5 text-sm font-bold rounded-lg text-white bg-indigo-600 hover:bg-indigo-700 shadow-sm transition-all active:scale-95 cursor-pointer"
+                  type="button"
+                  onClick={() => setActiveReadingTab('logs')}
+                  className={`flex items-center gap-1.5 px-3 py-2 sm:px-3.5 sm:py-2.5 text-xs sm:text-sm font-bold rounded-xl transition-colors cursor-pointer border-b-2 shrink-0 whitespace-nowrap ${
+                    activeReadingTab === 'logs'
+                      ? 'border-indigo-600 text-indigo-900 bg-indigo-50/80 font-black'
+                      : 'border-transparent text-slate-700 hover:text-slate-950 hover:bg-slate-100'
+                  }`}
                 >
-                  <Plus className="w-4 h-4" />
-                  <span>새 독후감 등록</span>
+                  <FileSpreadsheet className="w-4 h-4 text-indigo-600 stroke-[2.5]" />
+                  <span>누적 독후감 전수 이력</span>
+                  <span className="ml-0.5 px-1.5 py-0.5 text-[11px] rounded-full bg-indigo-100 text-indigo-900 font-black font-mono">
+                    {records.length}편
+                  </span>
                 </button>
-              </div>
+              </nav>
             </div>
           </header>
 
@@ -8008,70 +8247,73 @@ function ReadingDashboardView({ data, updateItem, deleteItem, insertItem, moveIt
           )}
 
           {/* Main Body Container */}
-          <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-5 space-y-5">
-            {/* KPI Stat Cards */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
-              <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-xs flex items-center gap-3.5">
-                <div className="w-11 h-11 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
-                  <BookOpen className="w-6 h-6" />
-                </div>
-                <div>
-                  <div className="text-xs sm:text-sm font-bold text-slate-700">누적 독후감 기록</div>
-                  <div className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-                    {stats.total}<span className="text-xs sm:text-sm font-bold text-slate-600 ml-1.5">편 완독</span>
+          <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+            {/* 1. 종합 독서 기록 및 코칭 상세 탭 */}
+            {activeReadingTab === 'overview' && (
+              <div className="space-y-6">
+                {/* KPI Stat Cards */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
+                  <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-xs flex items-center gap-3.5">
+                    <div className="w-11 h-11 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                      <BookOpen className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <div className="text-xs sm:text-sm font-bold text-slate-700">누적 독후감 기록</div>
+                      <div className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+                        {stats.total}<span className="text-xs sm:text-sm font-bold text-slate-600 ml-1.5">편 완독</span>
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </div>
 
-              <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-xs flex items-center gap-3.5">
-                <div className="w-11 h-11 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
-                  <Trophy className="w-6 h-6" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="text-xs sm:text-sm font-bold text-slate-700 truncate">
-                    오늘 / 최신 성취 ({stats.latestDateDisplay})
+                  <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-xs flex items-center gap-3.5">
+                    <div className="w-11 h-11 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                      <Trophy className="w-6 h-6" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="text-xs sm:text-sm font-bold text-slate-700 truncate">
+                        오늘 / 최신 성취 ({stats.latestDateDisplay || stats.latestDate})
+                      </div>
+                      <div className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-1.5">
+                        <span>{stats.latestScore}점</span>
+                        {stats.latestGrade && (
+                          <span className="px-2 py-0.5 text-xs font-black rounded-md bg-emerald-600 text-white">
+                            {stats.latestGrade}등급
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-[11px] font-bold text-slate-500 truncate mt-0.5">
+                        {stats.latestSession} · {stats.latestTitle}
+                      </div>
+                    </div>
                   </div>
-                  <div className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-1.5">
-                    <span>{stats.latestScore}</span>
-                    {stats.latestGrade && (
-                      <span className="px-2 py-0.5 text-xs font-black rounded-md bg-emerald-600 text-white">
-                        {stats.latestGrade}등급
-                      </span>
-                    )}
-                  </div>
-                  <div className="text-[11px] font-bold text-slate-500 truncate mt-0.5">
-                    {stats.latestSession} · {stats.latestTitle}
-                  </div>
-                </div>
-              </div>
 
-              <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-xs flex items-center gap-3.5">
-                <div className="w-11 h-11 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
-                  <Activity className="w-6 h-6" />
-                </div>
-                <div>
-                  <div className="text-xs sm:text-sm font-bold text-slate-700">평균 획득 점수</div>
-                  <div className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-                    {stats.avgScore}<span className="text-xs sm:text-sm font-bold text-slate-600 ml-1.5">점 / 100점</span>
+                  <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-xs flex items-center gap-3.5">
+                    <div className="w-11 h-11 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
+                      <Activity className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <div className="text-xs sm:text-sm font-bold text-slate-700">평균 획득 점수</div>
+                      <div className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+                        {stats.avgScore}<span className="text-xs sm:text-sm font-bold text-slate-600 ml-1.5">점 / 100점</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-xs flex items-center gap-3.5">
+                    <div className="w-11 h-11 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center shrink-0">
+                      <Lightbulb className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <div className="text-xs sm:text-sm font-bold text-slate-700">가치 내면화 작성률</div>
+                      <div className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+                        {stats.internalizedRate}<span className="text-xs sm:text-sm font-bold text-slate-600 ml-1.5">% ({stats.internalizedCount}/{stats.total})</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-xs flex items-center gap-3.5">
-                <div className="w-11 h-11 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center shrink-0">
-                  <Lightbulb className="w-6 h-6" />
-                </div>
-                <div>
-                  <div className="text-xs sm:text-sm font-bold text-slate-700">가치 내면화 작성률</div>
-                  <div className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-                    {stats.internalizedRate}<span className="text-xs sm:text-sm font-bold text-slate-600 ml-1.5">% ({stats.internalizedCount}/{stats.total})</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Master-Detail Interactive Work Area */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+                {/* Master-Detail Interactive Work Area */}
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
               {/* Left Column: Reading Log List */}
               <div className="lg:col-span-4 xl:col-span-3 space-y-3">
                 <div className="bg-white rounded-xl p-3 border border-slate-200 shadow-xs space-y-2.5">
@@ -8807,48 +9049,175 @@ function ReadingDashboardView({ data, updateItem, deleteItem, insertItem, moveIt
                 </div>
               </div>
             </div>
+              </div>
+            )}
 
-            {/* Monthly Progress Section */}
-            <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-xs">
-              <div className="flex items-center justify-between mb-3.5">
-                <div className="flex items-center gap-2.5">
-                  <div className="p-2 bg-indigo-50 text-indigo-600 rounded-lg">
-                    <BarChart3 className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h2 className="text-base font-extrabold text-slate-900">월별 독서 진도 현황</h2>
-                      <span className="text-xs font-bold text-slate-500">(월간 완독 권수)</span>
+            {/* 2. 월별 진도 및 영역별 성장 추이 탭 */}
+            {activeReadingTab === 'trends' && (
+              <div className="space-y-6">
+                {/* Monthly Progress Chart */}
+                <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-4">
+                  <div className="flex items-center justify-between pb-3 border-b border-slate-200 flex-wrap gap-2">
+                    <div className="flex items-center gap-2.5">
+                      <div className="p-2 bg-indigo-50 text-indigo-600 rounded-xl">
+                        <BarChart3 className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h2 className="text-base sm:text-lg font-black text-slate-900">월별 독서 진도 현황</h2>
+                          <span className="text-xs font-bold text-slate-500">(월간 완독 권수)</span>
+                        </div>
+                        <p className="text-xs sm:text-sm font-bold text-slate-600">막대를 클릭하여 해당 월의 독서 기록만 필터링하거나 상세 내역을 확인할 수 있습니다.</p>
+                      </div>
                     </div>
-                    <p className="text-sm font-bold text-slate-600">막대를 클릭하여 해당 월의 독서 기록만 필터링할 수 있습니다.</p>
+                    {activeMonthFilter && (
+                      <button
+                        onClick={() => setActiveMonthFilter(null)}
+                        className="text-xs font-bold bg-indigo-50 text-indigo-800 hover:bg-indigo-100 border border-indigo-300 px-3 py-1.5 rounded-full flex items-center gap-1 transition-colors cursor-pointer"
+                      >
+                        <span>{activeMonthFilter} 필터 해제</span>
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="h-44 w-full relative">
+                    <MonthlyBarChart
+                      data={monthlyData}
+                      activeFilter={activeMonthFilter}
+                      onSelectMonth={(monthKey) => {
+                        setActiveMonthFilter(prev => (prev === monthKey ? null : monthKey));
+                      }}
+                    />
+                  </div>
+
+                  <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-xs sm:text-sm font-bold text-slate-600">
+                    <span>총 <strong className="text-indigo-700 font-mono font-black">{monthlyData.length}</strong>개 활동 월</span>
+                    <span>월평균 완독량: <strong className="text-indigo-700 font-mono font-black">{monthlyData.length > 0 ? (records.length / monthlyData.length).toFixed(1) : '0.0'}</strong>권</span>
                   </div>
                 </div>
-                {activeMonthFilter && (
-                  <button
-                    onClick={() => setActiveMonthFilter(null)}
-                    className="text-xs font-bold bg-indigo-50 text-indigo-800 hover:bg-indigo-100 border border-indigo-300 px-3 py-1.5 rounded-full flex items-center gap-1 transition-colors cursor-pointer"
-                  >
-                    <span>{activeMonthFilter} 필터 해제</span>
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                )}
-              </div>
 
-              <div className="h-36 w-full relative">
-                <MonthlyBarChart
-                  data={monthlyData}
-                  activeFilter={activeMonthFilter}
-                  onSelectMonth={(monthKey) => {
-                    setActiveMonthFilter(prev => (prev === monthKey ? null : monthKey));
-                  }}
-                />
-              </div>
+                {/* 4대 평가 영역 점수 분석 카드 */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-black text-indigo-600 uppercase tracking-wider">A. 텍스트 이해</span>
+                      <span className="text-xs font-bold px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 font-mono">25점 만점</span>
+                    </div>
+                    <div className="text-2xl font-black text-slate-900 tracking-tight">
+                      {scoredRecords.length > 0 ? (scoredRecords.reduce((acc, r) => acc + (r.scoreA || 0), 0) / scoredRecords.length).toFixed(1) : '-'}<span className="text-xs text-slate-500 font-bold ml-1">점 평균</span>
+                    </div>
+                    <p className="text-xs text-slate-500 font-medium">원문 핵심 줄거리 및 사실적 정보 파악 능력</p>
+                  </div>
 
-              <div className="mt-3 pt-2.5 border-t border-slate-200 flex items-center justify-between text-sm font-bold text-slate-700">
-                <span>총 {monthlyData.length}개 활동 월</span>
-                <span>월평균 완독량: {monthlyData.length > 0 ? (stats.total / monthlyData.length).toFixed(1) : '0.0'}권</span>
+                  <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-black text-blue-600 uppercase tracking-wider">B. 비판적 사고</span>
+                      <span className="text-xs font-bold px-2 py-0.5 rounded bg-blue-50 text-blue-700 font-mono">25점 만점</span>
+                    </div>
+                    <div className="text-2xl font-black text-slate-900 tracking-tight">
+                      {scoredRecords.length > 0 ? (scoredRecords.reduce((acc, r) => acc + (r.scoreB || 0), 0) / scoredRecords.length).toFixed(1) : '-'}<span className="text-xs text-slate-500 font-bold ml-1">점 평균</span>
+                    </div>
+                    <p className="text-xs text-slate-500 font-medium">인물 행동 평가, 질문 생성 및 다각도 비평</p>
+                  </div>
+
+                  <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-black text-purple-600 uppercase tracking-wider">C. 가치 내면화</span>
+                      <span className="text-xs font-bold px-2 py-0.5 rounded bg-purple-50 text-purple-700 font-mono">25점 만점</span>
+                    </div>
+                    <div className="text-2xl font-black text-slate-900 tracking-tight">
+                      {scoredRecords.length > 0 ? (scoredRecords.reduce((acc, r) => acc + (r.scoreC || 0), 0) / scoredRecords.length).toFixed(1) : '-'}<span className="text-xs text-slate-500 font-bold ml-1">점 평균</span>
+                    </div>
+                    <p className="text-xs text-slate-500 font-medium">자신의 삶·경험과 연결 및 실천적 다짐 도출</p>
+                  </div>
+
+                  <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-black text-emerald-600 uppercase tracking-wider">D. 표현 정밀도</span>
+                      <span className="text-xs font-bold px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 font-mono">25점 만점</span>
+                    </div>
+                    <div className="text-2xl font-black text-slate-900 tracking-tight">
+                      {scoredRecords.length > 0 ? (scoredRecords.reduce((acc, r) => acc + (r.scoreD || 0), 0) / scoredRecords.length).toFixed(1) : '-'}<span className="text-xs text-slate-500 font-bold ml-1">점 평균</span>
+                    </div>
+                    <p className="text-xs text-slate-500 font-medium">문장 호응, 어휘 적절성 및 맞춤법 정밀성</p>
+                  </div>
+                </div>
+
+                {/* 분야별 독서 밸런스 및 성취 등급 분포 */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-3">
+                    <h3 className="text-sm font-black text-slate-900 flex items-center gap-2">
+                      <PieChart className="w-4 h-4 text-indigo-600" />
+                      <span>도서 분야별 독서 분포</span>
+                    </h3>
+                    <div className="space-y-2">
+                      {categories.filter(c => c !== '전체').map(cat => {
+                        const cnt = records.filter(r => r.category === cat).length;
+                        const pct = records.length > 0 ? Math.round((cnt / records.length) * 100) : 0;
+                        const theme = getCategoryTheme(cat);
+                        return (
+                          <div key={cat} className="space-y-1">
+                            <div className="flex justify-between text-xs font-bold text-slate-700">
+                              <span>{cat}</span>
+                              <span className="font-mono text-indigo-700">{cnt}권 ({pct}%)</span>
+                            </div>
+                            <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+                              <div className={`h-full ${theme.badgeBg || 'bg-indigo-600'}`} style={{ width: `${pct}%` }}></div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-3">
+                    <h3 className="text-sm font-black text-slate-900 flex items-center gap-2">
+                      <Award className="w-4 h-4 text-amber-500" />
+                      <span>성취 등급 분포 & 최고 성취</span>
+                    </h3>
+                    <div className="p-3 bg-amber-50/70 border border-amber-200 rounded-xl flex items-center justify-between">
+                      <div>
+                        <div className="text-xs font-bold text-amber-800">역대 최고 성취 기록</div>
+                        <div className="text-base font-black text-amber-950 mt-0.5">
+                          {stats.maxScore ? `${stats.maxScore}점 (${stats.maxGrade}등급)` : '-'}
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-xs font-bold text-slate-500">점수 추이</div>
+                        <div className="text-xs font-black text-indigo-700 mt-0.5">{stats.scoreGrowthText}</div>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-4 gap-2 pt-1 text-center">
+                      {['S', 'A+', 'A', 'B'].map(g => {
+                        const count = records.filter(r => r.grade === g).length;
+                        return (
+                          <div key={g} className="p-2.5 rounded-xl bg-slate-50 border border-slate-200">
+                            <div className="text-xs font-black text-slate-500">{g}등급</div>
+                            <div className="text-lg font-black text-slate-900 font-mono mt-0.5">{count}<span className="text-xs font-normal text-slate-500 ml-0.5">편</span></div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
               </div>
-            </div>
+            )}
+
+            {/* 3. 누적 독후감 전수 이력 대장 탭 */}
+            {activeReadingTab === 'logs' && (
+              <ReadingLogsTable
+                records={records}
+                onSelectRecord={(idx) => {
+                  setSelectedItemIndex(idx);
+                  setActiveReadingTab('overview');
+                }}
+                onEdit={openEditModal}
+                onDelete={(idx) => setDeleteConfirmIndex(idx)}
+                getCategoryTheme={getCategoryTheme}
+                getGradeTheme={getGradeTheme}
+              />
+            )}
           </main>
 
           {/* MODAL: Edit Record */}
@@ -9452,8 +9821,8 @@ function ReadingDashboardView({ data, updateItem, deleteItem, insertItem, moveIt
         {
           id: 'reading',
           label: '독서 & 논술 지도',
-          desc: '11회차 기록 & 역량 분석',
-          badge: `${readingCount || 11}회차`,
+          desc: `${readingCount}편 완독 & 1:1 코칭`,
+          badge: `${readingCount}회차`,
           badgeColor: 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30',
           icon: BookOpen,
           activeBg: 'bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-lg shadow-indigo-900/40',
@@ -9921,6 +10290,98 @@ function ReadingDashboardView({ data, updateItem, deleteItem, insertItem, moveIt
       92,
       "S"
     ]
+  },
+  {
+    "index_": 13,
+    "row": [
+      "13회차",
+      "2026-09-20",
+      "[고전/문학] 사자왕 형제의 모험",
+      "아스트리드 린드그렌",
+      "아픈 칼은 형 요나탄의 위로를 받으며 사후 세계인 낭기열라로 떠남. 평화롭던 낭기열라의 들장미 골짜기가 폭군 텡길에게 정복당하자 요나탄이 떠난 뒤 소식이 끊기고, 칼도 형을 찾기 위해 모험을 떠남.",
+      "\"누군가 꿈속에서 나를 부르기에 그를 찾아 먼 길을 떠나네. 까마득한 저 산 너머로.\"",
+      "하늘나라를 낭기열라라는 신비한 장소로 묘사한 게 동심적이고 스토리라인이 단순해 읽기 쉬움. 그러나 인물들의 캐릭터성이 명확하지 않고 '대충 착한' 캐릭터가 많아 실망함. 형제의 우정과 모험을 다룬 책임.",
+      "(미작성 - 보완 필요)",
+      "세계적 고전을 무비판적으로 찬양하지 않고 '대충 착한 평면적 인물 구성'을 정면으로 비판한 독자적 비평관 만점. 사후 세계의 동화적 은유(낭기열라) 포착.",
+      "평면적 캐릭터에 대한 비판을 바탕으로 \"내가 작가라면 칼과 요나탄에게 어떤 약점이나 내적 갈등을 부여해 입체적인 인물로 만들었을지\" 대안적 서사 재구성으로 유도하기.",
+      "하늘나라들→하늘나라를, 다른 이야기이다→다룬 이야기이다.",
+      "세계적인 명작 앞에서도 기죽지 않고 '캐릭터가 대충 착해서 실망했다'고 당당히 비판한 초원이의 안목에 박수를 보내! 뻔한 인물 대신 진짜 사람다운 고민과 갈등이 있는 이야기를 원하는 초원이는 이미 훌륭한 문학 평론가야.",
+      23,
+      25,
+      18,
+      22,
+      88,
+      "A+"
+    ]
+  },
+  {
+    "index_": 14,
+    "row": [
+      "14회차",
+      "2026-09-21",
+      "[고전/문학] 사자왕 형제의 모험 (결말)",
+      "아스트리드 린드그렌",
+      "칼은 형을 찾으러 가다 후베르트를 수상히 여김. 동굴에서 텡길과 반역자의 밀회를 엿보는데, 배신자는 후베르트가 아닌 요시였음. 칼은 요나탄을 만나지만 용 카틀라의 공격으로 부상당한 요나탄과 함께 다음 사후 세계인 낭길리마로 뛰어내림.",
+      "\"절대 안 돼! 나를 두고 혼자서 낭길리마로 가지 마!\" '그럼 나랑 함께 가고 싶니?' \"물론이야. 형이 어딜 가든 끝까지 따라가겠다. 진작부터 말했잖아.\"",
+      "마을에 반역자가 있다는 사실 자체는 뻔해서 별로 놀랍지 않았지만, 의심받던 후베르트가 아니라 요시가 배신자였다는 점이 신선했음. 또한 죽음이라는 비극을 낭기열라(낭길리마)에 가 있는 것으로 표현한 점이 인상 깊었음.",
+      "(미작성 - 보완 필요)",
+      "겉으로 의심스러운 인물 대신 친절한 인물이 배신자라는 '미끼와 반전(레드 헤링)' 서사 기법을 정확히 평가함. 죽음을 영원한 소멸이 아닌 새로운 세계로 치환한 판타지적 은유를 깊이 있게 수용함.",
+      "인상 깊은 문장의 '죽음을 초월한 형제애'를 바탕으로 \"두려움을 이겨내게 하는 깊은 사랑이나 신뢰의 힘\"에 대해 자신의 생각으로 정리하도록 유도하기.",
+      "하틀라→카틀라, 루베르트→후베르트, 수상되었다→수상쩍었다, 별로 느끼지 않았다→별로 놀라지 않았다.",
+      "의심받던 후베르트 대신 요시가 진짜 배신자였다는 반전의 재미를 정확히 짚어냈네! '죽음'이라는 슬픈 이별을 '낭길리마로 가는 것'으로 표현한 작가의 은유를 알아챈 점도 대단해. 형을 끝까지 지키겠다는 칼의 용기에 대해서도 초원이의 생각을 한 줄 덧붙여보자!",
+      24,
+      24,
+      18,
+      21,
+      87,
+      "A+"
+    ]
+  },
+  {
+    "index_": 15,
+    "row": [
+      "15회차",
+      "2026-09-23",
+      "[역사] 용선생 세계사 (르네상스와 메디치 가문)",
+      "이희진",
+      "십자군 전쟁과 흑사병 이후 인간의 개성과 자유, 감정을 중시하는 인문주의가 시작됨. 중세의 신 중심 그림에서 벗어나 인간의 눈에 보이는 대로 그리는 원근법이 도입됨. 메디치 은행으로 성공한 피렌체의 메디치 가문이 미술가들에게 수많은 후원을 해 예술가들이 마음껏 그림을 그리게 됨.",
+      "\"하지만 중세 사람들은 사물을 인간의 눈에 보이는 대로 그리는 것이 아니라 신의 눈에 보이는 대로 그리려고 했어.\"",
+      "이전 책에서 읽은 '고대-중세 침체-근대 부흥' 3분법을 떠올리며 르네상스가 문명을 재생시킨 중요한 변환점임을 논증함. 르네상스가 번영한 가장 큰 원동력을 메디치 가문의 전폭적인 경제적 지원으로 정확히 분석함.",
+      "(미작성 - 보완 필요)",
+      "르네상스의 사상(인문주의), 기법(원근법), 경제적 토대(메디치 은행 후원) 3박자를 완벽히 장악함. 기존 독서 지식과 융합하여 서양사 시대 구분을 설명하고 예술과 경제의 상관관계를 통찰함.",
+      "메디치 가문의 예술 후원을 현대 사회의 기업 후원(메세나)이나 '재능 있는 사람을 돕는 나눔의 가치'와 연결하여 마지막 칸에 내면화하도록 유도하기.",
+      "메다시 가훈→메디치 가문, 마음것→마음껏, 변환점→전환점(변환점도 허용).",
+      "\"십자군 전쟁과 흑사병 이후 인문주의가 태동한 배경부터 메디치 가문의 후원까지 역사의 맥락을 완벽히 짚어냈네! 다른 책에서 읽은 고대·중세·근대 시대 구분까지 가져와 르네상스를 역사의 전환점으로 설명한 부분은 진짜 고등학생 수준의 멋진 논술이야!\"",
+      25,
+      25,
+      20,
+      23,
+      93,
+      "S"
+    ]
+  },
+  {
+    "index_": 16,
+    "row": [
+      "16회차",
+      "2026-09-25",
+      "[문학] 당신의 소원을 들어드립니다",
+      "이지음",
+      "가난한 다희에게 요정 지니가 나타나 소원을 빌라 하자 다희는 부자가 되길 원함. 부적, 방망이, 소라고둥을 사서 불었지만 가난한 이웃을 생각하라는 쪽지만 나오고, 알고 보니 요정 지니는 유튜브를 따라 하며 35,000원을 받아 떡볶이를 사 먹은 엉터리였음.",
+      "\"소원을 이루는 일보다 중요한 건 먼저 자기 삶의 주인공이 되는 것입니다. 스스로 자신의 길을 가는 사람은 누구나 삶의 주인...\"",
+      "인생에서 아무런 노력 없이 이뤄지는 일은 없으며, 남에게 사기를 치는 것은 나쁨. 요정 지니가 35,000원이라는 큰돈을 가져가고 다희가 속아 넘어간 것을 비판하며 사기꾼은 감옥에 가야 한다고 주장함.",
+      "사기 당하지 말자.",
+      "노력 없는 공짜 성공은 없다'는 인생의 본질을 완벽히 간파함. 환상 동화의 틀을 빌린 사기극의 모순을 직관적으로 꿰뚫어 보고, 피해자 다희의 안일함과 가해자 지니의 부도덕성을 함께 비판한 현실적·비판적 통찰력 돋보임.",
+      "사기 당하지 말자'는 1줄 방어적 다짐에서 한 걸음 더 나아가, 책의 핵심 주제인 '요행을 바라지 않고 내 삶의 주인공으로 서는 구체적인 방법'으로 가치 내면화 심화 유도. 받침 글씨(감모→감옥, 말도로→말도록) 정서 지도 병행.",
+      "되달라고→돼 달라고, 불쌍히 않냐는→불쌍하지 않냐는, 넘어쳤다→넘어갔다, 말도로→말도록, 감모에 니야→감옥에 가야.",
+      "\"소원은 거저 이루어지는 게 아니라 내 노력으로 이루는 것이라는 큰 교훈을 정말 똑똑하게 찾아냈네! '지니는 감옥에 가야 한다'는 초원이의 거침없고 솔직한 정의감에 미소가 절로 났어. 앞으로 초원이가 스스로 삶의 주인이 되어 멋진 꿈을 이루어나가길 응원해!\"",
+      24,
+      24,
+      18,
+      20,
+      86,
+      "A+"
+    ]
   }
 ];
 
@@ -9961,7 +10422,7 @@ function ReadingDashboardView({ data, updateItem, deleteItem, insertItem, moveIt
       // Reading & Essay Tutoring Data State
       const [readingData, setReadingData] = useState(() => {
         try {
-          const saved = localStorage.getItem('tutoring_reading_dashboard_data_v2');
+          const saved = localStorage.getItem('tutoring_reading_dashboard_data_v3');
           if (saved) {
             const parsed = JSON.parse(saved);
             if (Array.isArray(parsed) && parsed.length >= INITIAL_READING_DATA.length) {
@@ -9994,7 +10455,7 @@ function ReadingDashboardView({ data, updateItem, deleteItem, insertItem, moveIt
       const persistReadingData = (newData) => {
         setReadingData(newData);
         try {
-          localStorage.setItem('tutoring_reading_dashboard_data_v2', JSON.stringify(newData));
+          localStorage.setItem('tutoring_reading_dashboard_data_v3', JSON.stringify(newData));
         } catch (e) {}
       };
 
@@ -10166,7 +10627,7 @@ function ReadingDashboardView({ data, updateItem, deleteItem, insertItem, moveIt
         if (confirm('구글 시트의 원본 데이터로 초기화하시겠습니까? 로컬에서 수정한 내용은 리셋됩니다.')) {
           localStorage.removeItem('workout_dashboard_data');
           localStorage.removeItem('health_dashboard_data');
-          localStorage.removeItem('tutoring_reading_dashboard_data_v2');
+          localStorage.removeItem('tutoring_reading_dashboard_data_v3');
           persistData(INITIAL_REAL_DATA);
           persistHealthData(INITIAL_HEALTH_DATA);
           persistReadingData(INITIAL_READING_DATA);
@@ -10176,8 +10637,8 @@ function ReadingDashboardView({ data, updateItem, deleteItem, insertItem, moveIt
 
       const workoutCount = Math.max(0, data.length - 1);
       const readingCount = useMemo(() => {
-        if (!readingData || readingData.length === 0) return 11;
-        return readingData.filter(d => d.index_ !== 0 && d.row && d.row.some(c => c)).length || 11;
+        if (!readingData || readingData.length === 0) return 0;
+        return readingData.filter(d => d.index_ !== 0 && d.row && d.row.some(c => c)).length;
       }, [readingData]);
       const latestHealthRow = Array.isArray(healthData) && healthData.length > 1 ? healthData[healthData.length - 1] : null;
       const latestWeight = latestHealthRow ? latestHealthRow[1] : '60.85';
