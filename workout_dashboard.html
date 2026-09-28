@@ -7637,6 +7637,7 @@ function ReadingDashboardView({ data, updateItem, deleteItem, insertItem, moveIt
         if (onManualSync) {
           try {
             await onManualSync();
+            setSelectedItemIndex(null);
           } catch (e) {
             console.error('Manual sync failed:', e);
           }
@@ -7700,7 +7701,7 @@ function ReadingDashboardView({ data, updateItem, deleteItem, insertItem, moveIt
           setRefreshTick(t => t + 1);
           const d = new Date();
           const nowStr = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}`;
-          setLastSyncTime(nowStr);
+          setLocalLastSyncTime(nowStr);
           setSyncNotice(`스프레드시트 최신 변경사항이 즉시 반영되었습니다. (${nowStr})`);
           setTimeout(() => setSyncNotice(''), 3000);
         }
@@ -10468,7 +10469,7 @@ function ReadingDashboardView({ data, updateItem, deleteItem, insertItem, moveIt
       // Reading & Essay Tutoring Data State
       const [readingData, setReadingData] = useState(() => {
         try {
-          const saved = localStorage.getItem('tutoring_reading_dashboard_data_v4');
+          const saved = localStorage.getItem('tutoring_reading_dashboard_data_v5');
           if (saved) {
             const parsed = JSON.parse(saved);
             if (Array.isArray(parsed) && parsed.length >= INITIAL_READING_DATA.length) {
@@ -10501,7 +10502,7 @@ function ReadingDashboardView({ data, updateItem, deleteItem, insertItem, moveIt
       const persistReadingData = (newData) => {
         setReadingData(newData);
         try {
-          localStorage.setItem('tutoring_reading_dashboard_data_v4', JSON.stringify(newData));
+          localStorage.setItem('tutoring_reading_dashboard_data_v5', JSON.stringify(newData));
         } catch (e) {}
       };
 
@@ -10701,7 +10702,7 @@ function ReadingDashboardView({ data, updateItem, deleteItem, insertItem, moveIt
         if (confirm('구글 시트의 원본 데이터로 초기화하시겠습니까? 로컬에서 수정한 내용은 리셋됩니다.')) {
           localStorage.removeItem('workout_dashboard_data');
           localStorage.removeItem('health_dashboard_data');
-          localStorage.removeItem('tutoring_reading_dashboard_data_v4');
+          localStorage.removeItem('tutoring_reading_dashboard_data_v5');
           persistData(INITIAL_REAL_DATA);
           persistHealthData(INITIAL_HEALTH_DATA);
           persistReadingData(INITIAL_READING_DATA);
