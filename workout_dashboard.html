@@ -7826,6 +7826,10 @@ function ReadingDashboardView({ data, updateItem, deleteItem, insertItem, moveIt
         return `${peak.label} (${peak.count}권 완독)`;
       }, [dailyData]);
 
+      const scoredRecords = useMemo(() => {
+        return records.filter(r => r.totalScore !== null);
+      }, [records]);
+
       const stats = useMemo(() => {
         const total = records.length;
         const internalizedCount = records.filter(
@@ -7834,8 +7838,6 @@ function ReadingDashboardView({ data, updateItem, deleteItem, insertItem, moveIt
         const rawRate = total > 0 ? (internalizedCount / total) * 100 : 0;
         const internalizedRate = Number.isInteger(rawRate) ? String(rawRate) : rawRate.toFixed(1);
         const withFeedbackCount = records.filter(r => r.kidFeedback && r.kidFeedback.trim().length > 0).length;
-
-        const scoredRecords = records.filter(r => r.totalScore !== null);
         const avgScore = scoredRecords.length > 0
           ? (scoredRecords.reduce((acc, r) => acc + r.totalScore, 0) / scoredRecords.length).toFixed(1)
           : '0';
@@ -8915,12 +8917,17 @@ function ReadingDashboardView({ data, updateItem, deleteItem, insertItem, moveIt
                 )}
               </div>
             </div>
+          </div>
+        )}
 
+            {/* 2. 월별 진도 및 영역별 성장 추이 탭 */}
+            {activeReadingTab === 'trends' && (
+              <div className="space-y-6">
             {/* Score & Grade Trends Chart Section */}
-            <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-xs space-y-4">
+            <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200">
                 <div className="flex items-center gap-2.5">
-                  <div className="p-2 bg-indigo-600 text-white rounded-lg shadow-xs">
+                  <div className="p-2 bg-indigo-600 text-white rounded-xl shadow-xs">
                     <TrendingUp className="w-5 h-5" />
                   </div>
                   <div>
@@ -9025,7 +9032,10 @@ function ReadingDashboardView({ data, updateItem, deleteItem, insertItem, moveIt
                 <ScoreGradeTrendChart
                   records={records}
                   selectedItemIndex={selectedItemIndex}
-                  onSelectItem={(idx) => setSelectedItemIndex(idx)}
+                  onSelectItem={(idx) => {
+                    setSelectedItemIndex(idx);
+                    setActiveReadingTab('overview');
+                  }}
                   metric={trendMetric}
                   sortMode={trendSortMode}
                 />
@@ -9050,12 +9060,6 @@ function ReadingDashboardView({ data, updateItem, deleteItem, insertItem, moveIt
                 </div>
               </div>
             </div>
-              </div>
-            )}
-
-            {/* 2. 월별 진도 및 영역별 성장 추이 탭 */}
-            {activeReadingTab === 'trends' && (
-              <div className="space-y-6">
                 {/* Monthly Progress Chart */}
                 <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-4">
                   <div className="flex items-center justify-between pb-3 border-b border-slate-200 flex-wrap gap-2">
