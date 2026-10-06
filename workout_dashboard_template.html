@@ -8402,7 +8402,7 @@ function ReadingDashboardView({ data, updateItem, deleteItem, insertItem, moveIt
       // Workout Data State
       const [data, setData] = useState(() => {
         try {
-          const saved = localStorage.getItem('workout_dashboard_data');
+          const saved = localStorage.getItem('workout_dashboard_data_v6');
           if (saved) {
             const parsed = JSON.parse(saved);
             if (Array.isArray(parsed) && parsed.length >= INITIAL_REAL_DATA.length) {
@@ -8416,7 +8416,7 @@ function ReadingDashboardView({ data, updateItem, deleteItem, insertItem, moveIt
       // Health Data State
       const [healthData, setHealthData] = useState(() => {
         try {
-          const saved = localStorage.getItem('health_dashboard_data');
+          const saved = localStorage.getItem('health_dashboard_data_v6');
           if (saved) {
             const parsed = JSON.parse(saved);
             if (Array.isArray(parsed) && parsed.length >= INITIAL_HEALTH_DATA.length) {
@@ -8430,7 +8430,7 @@ function ReadingDashboardView({ data, updateItem, deleteItem, insertItem, moveIt
       // Reading & Essay Tutoring Data State
       const [readingData, setReadingData] = useState(() => {
         try {
-          const saved = localStorage.getItem('tutoring_reading_dashboard_data_v5');
+          const saved = localStorage.getItem('tutoring_reading_dashboard_data_v6');
           if (saved) {
             const parsed = JSON.parse(saved);
             if (Array.isArray(parsed) && parsed.length >= INITIAL_READING_DATA.length) {
@@ -8449,21 +8449,21 @@ function ReadingDashboardView({ data, updateItem, deleteItem, insertItem, moveIt
       const persistData = (newData) => {
         setData(newData);
         try {
-          localStorage.setItem('workout_dashboard_data', JSON.stringify(newData));
+          localStorage.setItem('workout_dashboard_data_v6', JSON.stringify(newData));
         } catch (e) {}
       };
 
       const persistHealthData = (newData) => {
         setHealthData(newData);
         try {
-          localStorage.setItem('health_dashboard_data', JSON.stringify(newData));
+          localStorage.setItem('health_dashboard_data_v6', JSON.stringify(newData));
         } catch (e) {}
       };
 
       const persistReadingData = (newData) => {
         setReadingData(newData);
         try {
-          localStorage.setItem('tutoring_reading_dashboard_data_v5', JSON.stringify(newData));
+          localStorage.setItem('tutoring_reading_dashboard_data_v6', JSON.stringify(newData));
         } catch (e) {}
       };
 
@@ -8501,6 +8501,9 @@ function ReadingDashboardView({ data, updateItem, deleteItem, insertItem, moveIt
         }
       };
 
+      // 수동 동기화: Google Apps Script 웹앱 URL (시트 → GitHub → Pages)
+      const MANUAL_SYNC_URL = 'https://script.google.com/macros/s/AKfycbwtw6Y2jKDbZRf8Ik0fuJ_LyBKH5ad7dE-WjK0sGXi74pUH3TKmD-XT6Bn29qUNq_fjfg/exec';
+
       const fetchServerData = async (force = false) => {
         if (force) {
           setIsSyncing(true);
@@ -8510,11 +8513,37 @@ function ReadingDashboardView({ data, updateItem, deleteItem, insertItem, moveIt
         let syncMsg = '';
 
         try {
-          // 1. Try local sync server endpoints (same-origin /api/sync or local port 8082)
-          const endpoints = [
-            { url: force ? '/api/sync' : '/api/data', method: force ? 'POST' : 'GET' },
-            { url: force ? 'http://localhost:8082/api/sync' : 'http://localhost:8082/api/data', method: force ? 'POST' : 'GET' }
-          ];
+          // 0. 수동 동기화: Apps Script가 시트 → GitHub 동기화를 직접 실행
+          if (force && MANUAL_SYNC_URL && MANUAL_SYNC_URL.startsWith('https://script.google.com/macros/s/')) {
+            try {
+              setSyncNotice('구글 시트에서 최신 데이터를 가져오는 중...');
+              const mRes = await fetch(MANUAL_SYNC_URL + (MANUAL_SYNC_URL.indexOf('?') === -1 ? '?' : '&') + 't=' + Date.now());
+              const mJson = await mRes.json().catch(() => null);
+              if (mJson && mJson.ok) {
+                const changedCount = (mJson.changed || []).length;
+                if (changedCount > 0) {
+                  setSyncNotice('동기화 완료! 약 1~2분 후 자동으로 최신 데이터가 반영됩니다');
+                  setTimeout(() => fetchServerData(false), 30000);
+                  setTimeout(() => fetchServerData(false), 90000);
+                  setTimeout(() => setSyncNotice(''), 100000);
+                } else {
+                  setSyncNotice('이미 최신 상태입니다');
+                  setTimeout(() => setSyncNotice(''), 3000);
+                }
+              }
+            } catch (e) {
+              console.warn('[Sync] 수동 동기화 웹앱 요청 실패, 정적 파일로 폴백:', e);
+            }
+          }
+
+          // 1. Try local sync server endpoints (same-origin /api/sync or local port 8082 only on localhost)
+          const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+          const endpoints = isLocal
+            ? [
+                { url: force ? '/api/sync' : '/api/data', method: force ? 'POST' : 'GET' },
+                { url: force ? 'http://localhost:8082/api/sync' : 'http://localhost:8082/api/data', method: force ? 'POST' : 'GET' }
+              ]
+            : [];
 
           let jsonRes = null;
           for (const ep of endpoints) {
@@ -8588,9 +8617,9 @@ function ReadingDashboardView({ data, updateItem, deleteItem, insertItem, moveIt
 
             if (didFetchStatic) {
               setIsServerLive(true);
-              setLastSyncTime('배포 데이터 동기화 완료');
+              setLastSyncTime(new Date().toLocaleTimeString('ko-KR'));
               syncSuccess = true;
-              syncMsg = '최신 데이터 동기화 완료!';
+              syncMsg = '구글 시트 최신 데이터 동기화 완료!';
             } else {
               setIsServerLive(false);
             }
@@ -8662,8 +8691,11 @@ function ReadingDashboardView({ data, updateItem, deleteItem, insertItem, moveIt
       const handleResetData = () => {
         if (confirm('구글 시트의 원본 데이터로 초기화하시겠습니까? 로컬에서 수정한 내용은 리셋됩니다.')) {
           localStorage.removeItem('workout_dashboard_data');
+          localStorage.removeItem('workout_dashboard_data_v6');
           localStorage.removeItem('health_dashboard_data');
+          localStorage.removeItem('health_dashboard_data_v6');
           localStorage.removeItem('tutoring_reading_dashboard_data_v5');
+          localStorage.removeItem('tutoring_reading_dashboard_data_v6');
           persistData(INITIAL_REAL_DATA);
           persistHealthData(INITIAL_HEALTH_DATA);
           persistReadingData(INITIAL_READING_DATA);
