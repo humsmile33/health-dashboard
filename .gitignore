@@ -8,6 +8,7 @@ __pycache__/
 # Sensitive Google Sheets OAuth credentials & tokens (CRITICAL - DO NOT COMMIT)
 credentials.json
 token.json
+token_*.json
 token.pickle
 client_secrets*.json
 

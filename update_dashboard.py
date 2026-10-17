@@ -122,7 +122,25 @@ def get_google_services():
         calendar_service = build('calendar', 'v3', credentials=creds, static_discovery=True)
         drive_service = build('drive', 'v3', credentials=creds, static_discovery=True)
         gmail_service = build('gmail', 'v1', credentials=creds, static_discovery=True)
-        return sheets_service, calendar_service, drive_service, gmail_service
+
+        # Multi-account calendar support (e.g. personal calendars from develon2025 in token_calendar.json)
+        calendar_services = [calendar_service] if calendar_service else []
+        for extra_token in ['token_calendar.json', 'token_backup.json']:
+            extra_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), extra_token)
+            if os.path.exists(extra_path) and os.path.abspath(extra_path) != os.path.abspath(token_path):
+                try:
+                    b_creds = Credentials.from_authorized_user_file(extra_path, SCOPES)
+                    if b_creds and b_creds.expired and b_creds.refresh_token:
+                        b_creds.refresh(Request())
+                    b_cal = build('calendar', 'v3', credentials=b_creds, static_discovery=True)
+                    calendar_services.append(b_cal)
+                    print(f"[Info] Connected secondary calendar service from {extra_token}")
+                    break
+                except Exception as ex_b:
+                    print(f"[Warn] Could not load secondary calendar from {extra_token}: {ex_b}")
+
+        cal_return = calendar_services if len(calendar_services) > 1 else calendar_service
+        return sheets_service, cal_return, drive_service, gmail_service
     except Exception as e:
         print(f"[Error] Failed to build Google API services: {e}")
         return None, None, None, None
@@ -396,27 +414,30 @@ def fetch_calendar_events(calendar_service):
         # Provide Mock Data for DEMO mode
         return get_mock_calendar_events()
 
+    services = calendar_service if isinstance(calendar_service, list) else [calendar_service]
+
     events_list = []
     try:
         now = datetime.datetime.utcnow().isoformat() + 'Z'
         time_max = (datetime.datetime.utcnow() + datetime.timedelta(days=7)).isoformat() + 'Z'
         
-        # 1. Fetch the list of all calendars the user has access to
-        calendar_list = calendar_service.calendarList().list().execute()
-        calendars = calendar_list.get('items', [])
-        
         raw_events = []
-        for cal in calendars:
-            cal_id = cal['id']
-            # Fetch events for each calendar
+        for srv in services:
             try:
-                events_result = calendar_service.events().list(
-                    calendarId=cal_id, timeMin=now, timeMax=time_max,
-                    singleEvents=True, orderBy='startTime'
-                ).execute()
-                raw_events.extend(events_result.get('items', []))
-            except Exception:
-                # Some system calendars or read-only calendars might fail, skip gracefully
+                calendar_list = srv.calendarList().list().execute()
+                calendars = calendar_list.get('items', [])
+                for cal in calendars:
+                    cal_id = cal['id']
+                    try:
+                        events_result = srv.events().list(
+                            calendarId=cal_id, timeMin=now, timeMax=time_max,
+                            singleEvents=True, orderBy='startTime'
+                        ).execute()
+                        raw_events.extend(events_result.get('items', []))
+                    except Exception:
+                        continue
+            except Exception as e_srv:
+                print(f"[Warn] Failed to list calendars from service: {e_srv}")
                 continue
 
         # Deduplicate events (by ID) and sort chronologically
@@ -1167,11 +1188,11 @@ def parse_markdown_detail(md_text):
         if not line_clean:
             continue
             
-        # Match Date header: ## 2026-08-26 (수요일) or ## 2026-08-26
-        if line_clean.startswith('## '):
+        # Match Date header: ## 2026-08-26 (수요일) or ### 2026-08-26 or ## 2026-08-26
+        if re.match(r'^#{1,3}\s+\d{4}-\d{2}-\d{2}', line_clean):
             if current_section and (current_section['items'] or current_section['raw_lines']):
                 sections.append(current_section)
-            date_title = line_clean.replace('## ', '').strip()
+            date_title = re.sub(r'^#+\s*', '', line_clean).strip()
             current_section = {
                 'date': date_title,
                 'items': [],
@@ -1371,7 +1392,20 @@ def fetch_trends_data(drive_service, morning_brief=None):
         import io
         from googleapiclient.http import MediaIoBaseDownload
         
-        # 1. Download index file
+        # 1. Resolve index file ID (dynamically search for latest index in Drive)
+        try:
+            q_index = "name contains '주요동향_인덱스' and trashed = false"
+            search_res = drive_service.files().list(q=q_index, orderBy='name desc', fields='files(id, name)').execute()
+            found_files = search_res.get('files', [])
+            if found_files:
+                index_file_id = found_files[0]['id']
+                print(f"[Info] Found latest index file in Google Drive: {found_files[0]['name']} (ID: {index_file_id})")
+            else:
+                print(f"[Info] '_주요동향_인덱스' not found by query. Trying default ID: {index_file_id}")
+        except Exception as e_search:
+            print(f"[Warn] Failed to search for '_주요동향_인덱스' by name: {e_search}")
+        
+        # 2. Download index file
         req = drive_service.files().get_media(fileId=index_file_id)
         fh = io.BytesIO()
         downloader = MediaIoBaseDownload(fh, req)
@@ -1389,13 +1423,13 @@ def fetch_trends_data(drive_service, morning_brief=None):
         file_meta = drive_service.files().get(fileId=index_file_id, fields='parents').execute()
         parents = file_meta.get('parents', [])
         
-        file_map = {}
+        all_parent_files = []
         if parents:
             parent_id = parents[0]
-            query = f"'{parent_id}' in parents and trashed = false and mimeType = 'text/markdown'"
-            results = drive_service.files().list(q=query, fields='files(id, name)', pageSize=100).execute()
-            files = results.get('files', [])
-            file_map = {f['name']: f['id'] for f in files}
+            query = f"'{parent_id}' in parents and trashed = false"
+            results = drive_service.files().list(q=query, fields='files(id, name, mimeType)', pageSize=1000).execute()
+            all_parent_files = results.get('files', [])
+            print(f"[Info] Retrieved {len(all_parent_files)} files from parent folder (ID: {parent_id})")
             
         deep_dive_map = morning_brief.get('deep_dive', {}) if morning_brief else {}
         brief_date = morning_brief.get('date', datetime.date.today().strftime("%Y-%m-%d")) if morning_brief else datetime.date.today().strftime("%Y-%m-%d")
@@ -1405,14 +1439,28 @@ def fetch_trends_data(drive_service, morning_brief=None):
             entry_id = entry['id']
             fname = entry['doc_filename']
             keyword = entry['keyword']
+            clean_kw = keyword.strip()
+            clean_fname = fname.replace('.md', '').strip()
             
-            # Find matching file ID
-            matched_id = file_map.get(fname)
-            if not matched_id:
-                for k, v in file_map.items():
-                    if k.lower() == fname.lower() or k.replace(' ', '') == fname.replace(' ', ''):
-                        matched_id = v
-                        break
+            # Find matching file ID (exact match, keyword prefix with date e.g. NVIDIA_20261015.md, or base filename prefix)
+            candidates = []
+            for f in all_parent_files:
+                fn = f['name']
+                fn_clean = fn.replace('.md', '').strip()
+                if fn.lower() == fname.lower() or fn.replace(' ', '').lower() == fname.replace(' ', '').lower():
+                    candidates.append(f)
+                elif fn.startswith(clean_kw + '_') or fn.startswith(clean_fname + '_'):
+                    candidates.append(f)
+                elif fn_clean.lower() == clean_kw.lower():
+                    candidates.append(f)
+
+            matched_id = None
+            if candidates:
+                candidates.sort(key=lambda x: x['name'], reverse=True)
+                matched_id = candidates[0]['id']
+                print(f"[Info] Matched trend doc for '{keyword}': {candidates[0]['name']} (ID: {matched_id})")
+            else:
+                print(f"[Warn] No matching doc found for '{keyword}' (fname: {fname})")
                         
             sections = []
             if matched_id:

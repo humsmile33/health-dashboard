@@ -804,6 +804,7 @@
       const containerRef = useRef(null);
       const [containerWidth, setContainerWidth] = useState(600);
       const [hoveredPoint, setHoveredPoint] = useState(null);
+      const [selectedMetricKey, setSelectedMetricKey] = useState(null);
 
       useEffect(() => {
         if (!containerRef.current) return;
@@ -828,35 +829,86 @@
         });
       }, [records, activityName]);
 
-      const margin = { top: 20, right: 35, bottom: 40, left: 45 };
-      const innerWidth = Math.max(containerWidth - margin.left - margin.right, 100);
-      const innerHeight = Math.max(height - margin.top - margin.bottom, 80);
+      // 1. 누적 운동시간 및 누적 주행거리 등 핵심 통계 계산
+      const stats = useMemo(() => {
+        const totalDuration = filtered.reduce((acc, r) => acc + (r.duration || 0), 0);
+        const totalDistanceKm = filtered.reduce((acc, r) => acc + (r.distanceKm || 0), 0);
+        const speedVals = filtered.map(r => r.speedNum).filter(v => v !== null && !isNaN(v));
+        const maxSpeed = speedVals.length > 0 ? d3.max(speedVals) : null;
+        const avgSpeed = speedVals.length > 0 ? (d3.mean(speedVals) || 0).toFixed(2) : null;
+        const totalCalories = filtered.reduce((acc, r) => acc + (r.calories || 0), 0);
+        const hrVals = filtered.map(r => r.heartRate).filter(v => v !== null && !isNaN(v));
+        const avgHeartRate = hrVals.length > 0 ? Math.round(d3.mean(hrVals)) : null;
 
-      const metricType = useMemo(() => {
+        return {
+          totalDuration,
+          totalDistanceKm,
+          maxSpeed,
+          avgSpeed,
+          totalCalories,
+          avgHeartRate,
+          sessionCount: filtered.length
+        };
+      }, [filtered]);
+
+      // 2. 사용 가능한 지표 목록 추출 (해당 종목에 데이터가 있는 항목만 노출)
+      const availableMetrics = useMemo(() => {
         const hasSpeed = filtered.some(r => r.speedNum !== null && !isNaN(r.speedNum));
         const hasDistance = filtered.some(r => r.distanceKm !== null && !isNaN(r.distanceKm));
+        const hasDuration = filtered.some(r => r.duration !== null && !isNaN(r.duration));
+        const hasHeartRate = filtered.some(r => r.heartRate !== null && !isNaN(r.heartRate));
         const hasCalories = filtered.some(r => r.calories !== null && !isNaN(r.calories));
 
-        if (hasSpeed) return { key: 'speed', label: '속도 (km/h)', unit: 'km/h', color: '#10b981' };
-        if (hasDistance) return { key: 'distance', label: '거리 (km)', unit: 'km', color: '#f97316' };
-        if (hasCalories && !activityName.includes('사이클') && !activityName.includes('달리기')) {
-          return { key: 'calories', label: '칼로리 (kcal)', unit: 'kcal', color: '#8b5cf6' };
+        const list = [];
+        if (hasSpeed) {
+          list.push({ key: 'speed', label: '속도', fullLabel: '속도 (km/h)', unit: 'km/h', color: '#10b981', icon: '⚡' });
         }
-        return { key: 'duration', label: '운동 시간 (분)', unit: '분', color: '#3b82f6' };
-      }, [filtered, activityName]);
+        if (hasDistance) {
+          list.push({ key: 'distance', label: '주행거리', fullLabel: '거리 (km)', unit: 'km', color: '#f97316', icon: '📍' });
+        }
+        if (hasDuration) {
+          list.push({ key: 'duration', label: '운동시간', fullLabel: '운동 시간 (분)', unit: '분', color: '#3b82f6', icon: '⏱️' });
+        }
+        if (hasHeartRate) {
+          list.push({ key: 'heartRate', label: '심박수', fullLabel: '심박수 (bpm)', unit: 'bpm', color: '#ef4444', icon: '❤️' });
+        }
+        if (hasCalories) {
+          list.push({ key: 'calories', label: '칼로리', fullLabel: '소모 칼로리 (kcal)', unit: 'kcal', color: '#8b5cf6', icon: '🔥' });
+        }
+
+        if (list.length === 0) {
+          list.push({ key: 'duration', label: '운동시간', fullLabel: '운동 시간 (분)', unit: '분', color: '#3b82f6', icon: '⏱️' });
+        }
+        return list;
+      }, [filtered]);
+
+      // 현재 활성화된 지표 결정
+      const activeMetric = useMemo(() => {
+        if (selectedMetricKey) {
+          const found = availableMetrics.find(m => m.key === selectedMetricKey);
+          if (found) return found;
+        }
+        const defaultSpeed = availableMetrics.find(m => m.key === 'speed');
+        if (defaultSpeed) return defaultSpeed;
+        const defaultDist = availableMetrics.find(m => m.key === 'distance');
+        if (defaultDist) return defaultDist;
+        return availableMetrics[0];
+      }, [availableMetrics, selectedMetricKey]);
 
       const chartData = useMemo(() => {
         const validItems = [];
         filtered.forEach((r) => {
           let val = null;
-          if (metricType.key === 'speed') {
+          if (activeMetric.key === 'speed') {
             if (r.speedNum !== null && !isNaN(r.speedNum)) val = r.speedNum;
-          } else if (metricType.key === 'distance') {
+          } else if (activeMetric.key === 'distance') {
             if (r.distanceKm !== null && !isNaN(r.distanceKm)) val = r.distanceKm;
-          } else if (metricType.key === 'calories') {
-            if (r.calories !== null && !isNaN(r.calories)) val = r.calories;
-          } else {
+          } else if (activeMetric.key === 'duration') {
             if (r.duration !== null && !isNaN(r.duration)) val = r.duration;
+          } else if (activeMetric.key === 'heartRate') {
+            if (r.heartRate !== null && !isNaN(r.heartRate)) val = r.heartRate;
+          } else if (activeMetric.key === 'calories') {
+            if (r.calories !== null && !isNaN(r.calories)) val = r.calories;
           }
 
           if (val !== null) {
@@ -869,7 +921,9 @@
               duration: r.duration,
               calories: r.calories,
               distanceStr: r.distanceOrSet,
+              distanceKm: r.distanceKm,
               speedStr: r.speedOrPace,
+              speedNum: r.speedNum,
               hr: r.heartRate,
               val,
               index: validItems.length
@@ -877,7 +931,11 @@
           }
         });
         return validItems;
-      }, [filtered, metricType]);
+      }, [filtered, activeMetric]);
+
+      const margin = { top: 15, right: 25, bottom: 35, left: 45 };
+      const innerWidth = Math.max(containerWidth - margin.left - margin.right, 100);
+      const innerHeight = Math.max(height - margin.top - margin.bottom, 80);
 
       const xScale = useMemo(() => {
         if (chartData.length <= 1) return () => innerWidth / 2;
@@ -914,20 +972,120 @@
           .curve(d3.curveMonotoneX);
       }, [xScale, yScale, innerHeight]);
 
+      // X축 날짜 라벨 겹침 방지 (세션 수가 많을 때 적절한 간격으로 표시)
+      const shouldShowDateLabel = (i) => {
+        if (chartData.length <= 8) return true;
+        if (i === 0 || i === chartData.length - 1) return true;
+        const step = Math.ceil(chartData.length / 7);
+        return i % step === 0;
+      };
+
+      const gradId = `workoutGrad_${activeMetric.key}`;
+
       return (
         <div ref={containerRef} className="w-full relative select-none">
+          {/* 1. 누적 운동시간 및 누적 주행거리 핵심 지표 카드 */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mb-3.5 p-3 bg-slate-50/90 rounded-xl border border-slate-200">
+            <div className="flex flex-col">
+              <span className="text-[11px] font-bold text-slate-500 flex items-center gap-1">
+                <Clock className="w-3.5 h-3.5 text-blue-500" />
+                누적 운동시간
+              </span>
+              <span className="text-sm sm:text-base font-black text-slate-900 font-mono mt-0.5">
+                {stats.totalDuration >= 60
+                  ? `${Math.floor(stats.totalDuration / 60)}시간 ${Math.round(stats.totalDuration % 60)}분`
+                  : `${stats.totalDuration.toFixed(1)}분`}
+              </span>
+              <span className="text-[10px] font-semibold text-slate-400">
+                총 {stats.totalDuration.toFixed(1)}분
+              </span>
+            </div>
+
+            <div className="flex flex-col">
+              <span className="text-[11px] font-bold text-slate-500 flex items-center gap-1">
+                <Compass className="w-3.5 h-3.5 text-orange-500" />
+                누적 주행거리
+              </span>
+              <span className="text-sm sm:text-base font-black text-slate-900 font-mono mt-0.5">
+                {stats.totalDistanceKm > 0 ? `${stats.totalDistanceKm.toFixed(2)} km` : '-'}
+              </span>
+              <span className="text-[10px] font-semibold text-slate-400">
+                {stats.totalDistanceKm > 0 ? `평균 ${(stats.totalDistanceKm / Math.max(stats.sessionCount, 1)).toFixed(2)} km/회` : '거리 미측정'}
+              </span>
+            </div>
+
+            <div className="flex flex-col">
+              <span className="text-[11px] font-bold text-slate-500 flex items-center gap-1">
+                <Zap className="w-3.5 h-3.5 text-emerald-500" />
+                {stats.maxSpeed ? '최고 속도' : (stats.totalCalories > 0 ? '누적 칼로리' : '평균 심박')}
+              </span>
+              <span className="text-sm sm:text-base font-black text-emerald-600 font-mono mt-0.5">
+                {stats.maxSpeed ? `${stats.maxSpeed.toFixed(2)} km/h` : (stats.totalCalories > 0 ? `${stats.totalCalories.toLocaleString()} kcal` : (stats.avgHeartRate ? `${stats.avgHeartRate} bpm` : '-'))}
+              </span>
+              <span className="text-[10px] font-semibold text-slate-400">
+                {stats.avgSpeed ? `평균 속도 ${stats.avgSpeed} km/h` : (stats.avgHeartRate ? `평균 ${stats.avgHeartRate} bpm` : '')}
+              </span>
+            </div>
+
+            <div className="flex flex-col">
+              <span className="text-[11px] font-bold text-slate-500 flex items-center gap-1">
+                <Target className="w-3.5 h-3.5 text-purple-500" />
+                총 세션 수
+              </span>
+              <span className="text-sm sm:text-base font-black text-slate-900 font-mono mt-0.5">
+                {stats.sessionCount}회 완료
+              </span>
+              <span className="text-[10px] font-semibold text-slate-400">
+                {activityName === '전체' ? '전체 종목 종합' : `${activityName} 기록`}
+              </span>
+            </div>
+          </div>
+
+          {/* 2. 지표 전환 탭 버튼 그룹 */}
+          <div className="flex items-center justify-between gap-2 flex-wrap mb-2.5 pb-2 border-b border-slate-100">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="text-xs font-bold text-slate-500 mr-1 flex items-center gap-1">
+                <SlidersHorizontal className="w-3.5 h-3.5 text-slate-400" />
+                지표 전환:
+              </span>
+              {availableMetrics.map(m => {
+                const isActive = activeMetric.key === m.key;
+                return (
+                  <button
+                    key={m.key}
+                    type="button"
+                    onClick={() => setSelectedMetricKey(m.key)}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
+                      isActive
+                        ? 'bg-slate-900 text-white shadow-xs ring-1 ring-slate-900'
+                        : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
+                    }`}
+                  >
+                    <span>{m.icon}</span>
+                    <span>{m.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-600">
+              차트 기준: <strong className="text-slate-900 font-mono">{activeMetric.fullLabel}</strong>
+            </span>
+          </div>
+
+          {/* 3. D3 SVG 차트 */}
           {chartData.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-48 text-slate-400 bg-slate-50/50 rounded-xl border border-dashed border-slate-200">
               <Activity className="w-8 h-8 mb-2 opacity-40 text-slate-400" />
-              <p className="text-xs font-medium">선택된 종목의 추이 데이터가 없습니다.</p>
+              <p className="text-xs font-medium">선택된 종목의 {activeMetric.label} 추이 데이터가 없습니다.</p>
             </div>
           ) : (
             <div className="relative">
               <svg width={containerWidth} height={height} className="overflow-visible">
                 <defs>
-                  <linearGradient id="workoutGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor={metricType.color} stopOpacity="0.25" />
-                    <stop offset="100%" stopColor={metricType.color} stopOpacity="0.01" />
+                  <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor={activeMetric.color} stopOpacity="0.28" />
+                    <stop offset="100%" stopColor={activeMetric.color} stopOpacity="0.01" />
                   </linearGradient>
                 </defs>
 
@@ -943,11 +1101,11 @@
 
                   {chartData.length > 1 && (
                     <>
-                      <path d={areaGen(chartData)} fill="url(#workoutGrad)" />
+                      <path d={areaGen(chartData)} fill={`url(#${gradId})`} />
                       <path
                         d={lineGen(chartData)}
                         fill="none"
-                        stroke={metricType.color}
+                        stroke={activeMetric.color}
                         strokeWidth="2.5"
                         strokeLinecap="round"
                         strokeLinejoin="round"
@@ -959,6 +1117,7 @@
                     const cx = chartData.length === 1 ? innerWidth / 2 : xScale(i);
                     const cy = yScale(d.val);
                     const isHovered = hoveredPoint && hoveredPoint.index === i;
+                    const showLabel = isHovered || shouldShowDateLabel(i);
 
                     return (
                       <g key={`pt-${i}`}>
@@ -968,9 +1127,9 @@
                         <circle
                           cx={cx}
                           cy={cy}
-                          r={isHovered ? 6 : 4}
+                          r={isHovered ? 6 : (chartData.length > 40 ? 3 : 4)}
                           fill="#ffffff"
-                          stroke={metricType.color}
+                          stroke={activeMetric.color}
                           strokeWidth={isHovered ? 3 : 2}
                           className="cursor-pointer transition-all duration-150"
                         />
@@ -984,16 +1143,18 @@
                           onMouseEnter={() => setHoveredPoint({ ...d, cx, cy })}
                           onMouseLeave={() => setHoveredPoint(null)}
                         />
-                        <text
-                          x={cx}
-                          y={innerHeight + 18}
-                          textAnchor="middle"
-                          className={`text-xs transition-colors font-bold ${
-                            isHovered ? 'fill-slate-950 font-black' : 'fill-slate-600'
-                          }`}
-                        >
-                          {d.dateLabel}
-                        </text>
+                        {showLabel && (
+                          <text
+                            x={cx}
+                            y={innerHeight + 18}
+                            textAnchor="middle"
+                            className={`text-[11px] transition-colors font-bold ${
+                              isHovered ? 'fill-slate-950 font-black' : 'fill-slate-500'
+                            }`}
+                          >
+                            {d.dateLabel}
+                          </text>
+                        )}
                       </g>
                     );
                   })}
@@ -1030,6 +1191,10 @@
                     {hoveredPoint.hr && (
                       <div className="text-slate-300 text-xs font-semibold">심박수: {hoveredPoint.hr} bpm</div>
                     )}
+                    <div className="pt-1 mt-1 border-t border-slate-800 text-[11px] text-slate-400 flex justify-between">
+                      <span>현재 지표 ({activeMetric.label})</span>
+                      <span className="font-mono font-bold text-white">{hoveredPoint.val} {activeMetric.unit}</span>
+                    </div>
                   </div>
                 </div>
               )}
@@ -2755,19 +2920,17 @@
                           기록 개선 곡선
                         </span>
                       </div>
-                      <p className="text-xs sm:text-sm font-bold text-slate-500 mb-4">
-                        {selectedSportFilter.includes('사이클') ? '주행 회차별 속도(km/h) 및 지속시간 향상 추세' :
-                         selectedSportFilter.includes('달리기') || selectedSportFilter.includes('러닝') ? '회차별 완주 거리(km) 및 페이스 향상' :
-                         selectedSportFilter.includes('수영') ? '회차별 수영 거리 및 100m당 페이스 단축' :
-                         selectedSportFilter.includes('골프') ? '타수 및 소모 칼로리 추이' :
-                         '회차별 운동 지속 시간(분) 추이'}
+                      <p className="text-xs sm:text-sm font-bold text-slate-500 mb-3">
+                        {selectedSportFilter === '전체'
+                          ? '전체 세션의 누적 운동시간·거리 통계 및 회차별 추세 분석'
+                          : `${selectedSportFilter}의 누적 운동시간·주행거리 종합 통계 및 지표별 기록 개선 곡선`}
                       </p>
                     </div>
 
                     <D3ActivityProgressChart
                       records={monthFilteredWorkouts}
                       activityName={selectedSportFilter}
-                      height={280}
+                      height={240}
                     />
                   </div>
                 </div>
