@@ -675,6 +675,1123 @@
       );
     }
 
+    // --- WORKOUT CATEGORIES & DEFINITIONS (자전거, 걷기, 달리기, 등산, 수영, 기타) ---
+    const WORKOUT_CATEGORIES = [
+      {
+        key: 'cycling',
+        label: '자전거 라이딩',
+        shortLabel: '자전거',
+        icon: '🚴',
+        color: '#0284c7', // Sky-600
+        colorLight: '#38bdf8',
+        gradientId: 'cat_grad_cycling',
+        bg: 'bg-sky-50 text-sky-800 border-sky-200',
+        match: (act) => act.includes('사이클') || act.includes('자전거')
+      },
+      {
+        key: 'walking',
+        label: '걷기',
+        shortLabel: '걷기',
+        icon: '🚶',
+        color: '#f59e0b', // Amber-500
+        colorLight: '#fbbf24',
+        gradientId: 'cat_grad_walking',
+        bg: 'bg-amber-50 text-amber-800 border-amber-200',
+        match: (act) => act.includes('걷기')
+      },
+      {
+        key: 'running',
+        label: '달리기',
+        shortLabel: '달리기',
+        icon: '🏃',
+        color: '#f43f5e', // Rose-500
+        colorLight: '#fb7185',
+        gradientId: 'cat_grad_running',
+        bg: 'bg-rose-50 text-rose-800 border-rose-200',
+        match: (act) => act.includes('달리기') || act.includes('러닝')
+      },
+      {
+        key: 'hiking',
+        label: '등산',
+        shortLabel: '등산',
+        icon: '⛰️',
+        color: '#10b981', // Emerald-500
+        colorLight: '#34d399',
+        gradientId: 'cat_grad_hiking',
+        bg: 'bg-emerald-50 text-emerald-800 border-emerald-200',
+        match: (act) => act.includes('등산') || act.includes('트레킹') || act.includes('하이킹')
+      },
+      {
+        key: 'swimming',
+        label: '수영 / 해양',
+        shortLabel: '수영',
+        icon: '🏊',
+        color: '#06b6d4', // Cyan-500
+        colorLight: '#22d3ee',
+        gradientId: 'cat_grad_swimming',
+        bg: 'bg-cyan-50 text-cyan-800 border-cyan-200',
+        match: (act) => act.includes('수영') || act.includes('다이빙') || act.includes('SUP')
+      },
+      {
+        key: 'other',
+        label: '기타 (골프·근력 등)',
+        shortLabel: '기타',
+        icon: '⚡',
+        color: '#8b5cf6', // Violet-500
+        colorLight: '#a78bfa',
+        gradientId: 'cat_grad_other',
+        bg: 'bg-purple-50 text-purple-800 border-purple-200',
+        match: () => true
+      }
+    ];
+
+    const getWorkoutCategoryKey = (act) => {
+      const name = String(act || '').trim();
+      for (let i = 0; i < WORKOUT_CATEGORIES.length; i++) {
+        if (WORKOUT_CATEGORIES[i].match(name)) return WORKOUT_CATEGORIES[i].key;
+      }
+      return 'other';
+    };
+
+    const getWorkoutCategoryMeta = (catKey) => {
+      return WORKOUT_CATEGORIES.find(c => c.key === catKey) || WORKOUT_CATEGORIES[WORKOUT_CATEGORIES.length - 1];
+    };
+
+    // --- D3 STACKED CUMULATIVE TIME AREA CHART ---
+    function D3StackedCumulativeAreaChart({
+      workouts,
+      height = 280,
+      highlightedCategory = null,
+      onToggleCategory = null
+    }) {
+      const containerRef = useRef(null);
+      const [containerWidth, setContainerWidth] = useState(600);
+      const [hoveredPoint, setHoveredPoint] = useState(null);
+
+      useEffect(() => {
+        if (!containerRef.current) return;
+        const observer = new ResizeObserver((entries) => {
+          for (let entry of entries) {
+            setContainerWidth(entry.contentRect.width);
+          }
+        });
+        observer.observe(containerRef.current);
+        return () => observer.disconnect();
+      }, []);
+
+      const { cumulativeData, categoryTotals, totalCumulativeHours } = useMemo(() => {
+        if (!workouts || workouts.length === 0) {
+          return { cumulativeData: [], categoryTotals: {}, totalCumulativeHours: 0 };
+        }
+
+        const dayMap = {};
+        workouts.forEach(w => {
+          if (!w.date) return;
+          const dur = w.duration || 0;
+          const cat = getWorkoutCategoryKey(w.activity);
+          if (!dayMap[w.date]) {
+            dayMap[w.date] = {
+              date: w.date,
+              cycling: 0,
+              walking: 0,
+              running: 0,
+              hiking: 0,
+              swimming: 0,
+              other: 0,
+              dayTotal: 0,
+              activities: []
+            };
+          }
+          dayMap[w.date][cat] += dur;
+          dayMap[w.date].dayTotal += dur;
+          dayMap[w.date].activities.push(w.activity);
+        });
+
+        const sortedDates = Object.keys(dayMap).sort((a, b) => parseDateSafe(a).getTime() - parseDateSafe(b).getTime());
+
+        let cum = { cycling: 0, walking: 0, running: 0, hiking: 0, swimming: 0, other: 0 };
+        const cumList = [];
+
+        sortedDates.forEach((d, idx) => {
+          const day = dayMap[d];
+          cum.cycling += day.cycling;
+          cum.walking += day.walking;
+          cum.running += day.running;
+          cum.hiking += day.hiking;
+          cum.swimming += day.swimming;
+          cum.other += day.other;
+
+          const totalMinutes = cum.cycling + cum.walking + cum.running + cum.hiking + cum.swimming + cum.other;
+          cumList.push({
+            date: d,
+            dateLabel: formatDateShort(d),
+            isLatest: idx === sortedDates.length - 1,
+            dayTotalMinutes: day.dayTotal,
+            dayActivities: Array.from(new Set(day.activities)),
+            cyclingHours: +(cum.cycling / 60).toFixed(2),
+            walkingHours: +(cum.walking / 60).toFixed(2),
+            runningHours: +(cum.running / 60).toFixed(2),
+            hikingHours: +(cum.hiking / 60).toFixed(2),
+            swimmingHours: +(cum.swimming / 60).toFixed(2),
+            otherHours: +(cum.other / 60).toFixed(2),
+            totalHours: +(totalMinutes / 60).toFixed(2),
+            cyclingMin: cum.cycling,
+            walkingMin: cum.walking,
+            runningMin: cum.running,
+            hikingMin: cum.hiking,
+            swimmingMin: cum.swimming,
+            otherMin: cum.other,
+            totalMinutes: totalMinutes
+          });
+        });
+
+        const finalDay = cumList[cumList.length - 1] || {};
+        const totals = {
+          cycling: finalDay.cyclingHours || 0,
+          walking: finalDay.walkingHours || 0,
+          running: finalDay.runningHours || 0,
+          hiking: finalDay.hikingHours || 0,
+          swimming: finalDay.swimmingHours || 0,
+          other: finalDay.otherHours || 0,
+          total: finalDay.totalHours || 0
+        };
+
+        return {
+          cumulativeData: cumList,
+          categoryTotals: totals,
+          totalCumulativeHours: totals.total
+        };
+      }, [workouts]);
+
+      const margin = { top: 25, right: 30, bottom: 40, left: 52 };
+      const innerWidth = Math.max(containerWidth - margin.left - margin.right, 100);
+      const innerHeight = Math.max(height - margin.top - margin.bottom, 80);
+
+      const stackKeys = ['cycling', 'walking', 'running', 'hiking', 'swimming', 'other'];
+
+      const series = useMemo(() => {
+        if (cumulativeData.length === 0) return [];
+        const stackGen = d3.stack()
+          .keys(stackKeys)
+          .value((d, key) => d[key + 'Hours'] || 0);
+        return stackGen(cumulativeData);
+      }, [cumulativeData]);
+
+      const xScale = useMemo(() => {
+        return d3.scalePoint()
+          .domain(cumulativeData.map(d => d.date))
+          .range([0, innerWidth])
+          .padding(0.05);
+      }, [cumulativeData, innerWidth]);
+
+      const maxHours = d3.max(cumulativeData, d => d.totalHours) || 10;
+      const yScale = useMemo(() => {
+        return d3.scaleLinear()
+          .domain([0, maxHours * 1.15])
+          .range([innerHeight, 0])
+          .nice();
+      }, [maxHours, innerHeight]);
+
+      const latestPoint = cumulativeData.length > 0 ? cumulativeData[cumulativeData.length - 1] : null;
+
+      const handlePointerMove = (e) => {
+        if (!containerRef.current || cumulativeData.length === 0) return;
+        const rect = containerRef.current.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left - margin.left;
+        if (mouseX < 0 || mouseX > innerWidth) {
+          setHoveredPoint(null);
+          return;
+        }
+
+        let closest = cumulativeData[0];
+        let minDiff = Infinity;
+        cumulativeData.forEach(d => {
+          const x = xScale(d.date) || 0;
+          const diff = Math.abs(x - mouseX);
+          if (diff < minDiff) {
+            minDiff = diff;
+            closest = d;
+          }
+        });
+        setHoveredPoint(closest);
+      };
+
+      const handlePointerLeave = () => {
+        setHoveredPoint(null);
+      };
+
+      if (cumulativeData.length === 0) {
+        return (
+          <div className="flex flex-col items-center justify-center h-48 text-slate-400 bg-slate-50/50 rounded-xl border border-dashed border-slate-200">
+            <TrendingUp className="w-8 h-8 mb-2 opacity-50 text-slate-400" />
+            <p className="text-sm font-medium">표시할 누적 운동 데이터가 없습니다.</p>
+          </div>
+        );
+      }
+
+      return (
+        <div ref={containerRef} className="w-full relative select-none">
+          <div className="relative">
+            <svg
+              width={containerWidth}
+              height={height}
+              className="overflow-visible"
+              onMouseMove={handlePointerMove}
+              onMouseLeave={handlePointerLeave}
+            >
+              <defs>
+                {WORKOUT_CATEGORIES.map(cat => (
+                  <linearGradient key={cat.gradientId} id={cat.gradientId} x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" stopColor={cat.color} stopOpacity="0.85" />
+                    <stop offset="100%" stopColor={cat.colorLight} stopOpacity="0.4" />
+                  </linearGradient>
+                ))}
+              </defs>
+
+              <g transform={`translate(${margin.left}, ${margin.top})`}>
+                {/* Y-axis gridlines & labels */}
+                {yScale.ticks(5).map((tick, i) => (
+                  <g key={`y-grid-${i}`} transform={`translate(0, ${yScale(tick)})`}>
+                    <line x1={0} x2={innerWidth} stroke="#f1f5f9" strokeDasharray="3 3" />
+                    <text x={-10} y={4} textAnchor="end" className="text-xs fill-slate-500 font-mono font-bold">
+                      {tick}h
+                    </text>
+                  </g>
+                ))}
+
+                {/* Stacked Areas */}
+                {series.map((s) => {
+                  const catKey = s.key;
+                  const meta = getWorkoutCategoryMeta(catKey);
+                  const isHighlighted = !highlightedCategory || highlightedCategory === catKey;
+                  const opacity = isHighlighted ? (highlightedCategory === catKey ? 0.95 : 0.8) : 0.15;
+
+                  const areaGenerator = d3.area()
+                    .x(d => xScale(d.data.date) || 0)
+                    .y0(d => yScale(d[0]))
+                    .y1(d => yScale(d[1]))
+                    .curve(d3.curveMonotoneX);
+
+                  const lineGenerator = d3.line()
+                    .x(d => xScale(d.data.date) || 0)
+                    .y(d => yScale(d[1]))
+                    .curve(d3.curveMonotoneX);
+
+                  return (
+                    <g key={catKey} className="transition-opacity duration-200">
+                      <path
+                        d={areaGenerator(s)}
+                        fill={`url(#${meta.gradientId})`}
+                        opacity={opacity}
+                      />
+                      <path
+                        d={lineGenerator(s)}
+                        fill="none"
+                        stroke={meta.color}
+                        strokeWidth={highlightedCategory === catKey ? 2.5 : 1.2}
+                        opacity={isHighlighted ? 0.95 : 0.25}
+                      />
+                    </g>
+                  );
+                })}
+
+                {/* Overall top boundary dashed line */}
+                <path
+                  d={d3.line()
+                    .x(d => xScale(d.date) || 0)
+                    .y(d => yScale(d.totalHours))
+                    .curve(d3.curveMonotoneX)(cumulativeData)}
+                  fill="none"
+                  stroke="#0f172a"
+                  strokeWidth={2}
+                  strokeDasharray="4 4"
+                  opacity={0.35}
+                />
+
+                {/* X-axis date labels */}
+                {cumulativeData.map((d, i) => {
+                  const totalCount = cumulativeData.length;
+                  const isFirst = i === 0;
+                  const isLast = i === totalCount - 1;
+                  const step = totalCount > 40 ? 6 : totalCount > 20 ? 4 : 2;
+                  const shouldShow = isFirst || isLast || (i % step === 0 && i < totalCount - 2);
+
+                  if (!shouldShow) return null;
+                  const x = xScale(d.date) || 0;
+
+                  return (
+                    <g key={`x-label-${d.date}`} transform={`translate(${x}, ${innerHeight})`}>
+                      <line y1={0} y2={4} stroke="#cbd5e1" strokeWidth={1} />
+                      <text
+                        y={18}
+                        textAnchor="middle"
+                        className={`text-[11px] font-mono ${
+                          isLast
+                            ? 'fill-emerald-950 font-black underline'
+                            : 'fill-slate-600 font-bold'
+                        }`}
+                      >
+                        {d.dateLabel}
+                      </text>
+                    </g>
+                  );
+                })}
+
+                {/* Latest endpoint badge */}
+                {latestPoint && (
+                  <g transform={`translate(${xScale(latestPoint.date) || 0}, ${yScale(latestPoint.totalHours)})`}>
+                    <circle r={5} fill="#059669" stroke="#fff" strokeWidth={2} />
+                    <text
+                      x={-10}
+                      y={-10}
+                      textAnchor="end"
+                      className="text-xs font-mono font-black fill-emerald-900 bg-white"
+                    >
+                      누적 {latestPoint.totalHours}h
+                    </text>
+                  </g>
+                )}
+
+                {/* Hover vertical line & tracker dots */}
+                {hoveredPoint && (
+                  <g>
+                    <line
+                      x1={xScale(hoveredPoint.date) || 0}
+                      x2={xScale(hoveredPoint.date) || 0}
+                      y1={0}
+                      y2={innerHeight}
+                      stroke="#334155"
+                      strokeWidth={1.5}
+                      strokeDasharray="3 3"
+                    />
+                    <circle
+                      cx={xScale(hoveredPoint.date) || 0}
+                      cy={yScale(hoveredPoint.totalHours)}
+                      r={5}
+                      fill="#0f172a"
+                      stroke="#ffffff"
+                      strokeWidth={2}
+                    />
+                  </g>
+                )}
+              </g>
+            </svg>
+
+            {/* Hover Tooltip Card */}
+            {hoveredPoint && (
+              <div
+                style={{
+                  position: 'absolute',
+                  left: Math.min(
+                    Math.max((xScale(hoveredPoint.date) || 0) + margin.left - 110, 10),
+                    containerWidth - 260
+                  ),
+                  top: Math.max((yScale(hoveredPoint.totalHours) || 0) + margin.top - 170, 6)
+                }}
+                className="pointer-events-none bg-slate-900/95 backdrop-blur text-white p-3.5 rounded-xl shadow-2xl border border-slate-700/80 z-30 min-w-[240px] text-xs"
+              >
+                <div className="font-bold border-b border-slate-700/80 pb-2 mb-2 flex justify-between items-center">
+                  <span className="text-sm font-extrabold text-white">{hoveredPoint.date}</span>
+                  {hoveredPoint.dayTotalMinutes > 0 ? (
+                    <span className="text-[11px] text-emerald-300 font-black px-1.5 py-0.5 rounded bg-emerald-950 border border-emerald-700/50">
+                      +{hoveredPoint.dayTotalMinutes.toFixed(0)}분 추가
+                    </span>
+                  ) : (
+                    <span className="text-[11px] text-slate-400 font-bold px-1.5 py-0.5 rounded bg-slate-800">
+                      휴식일
+                    </span>
+                  )}
+                </div>
+
+                <div className="mb-2.5 pb-2 border-b border-slate-800">
+                  <div className="text-[11px] text-slate-400 font-semibold mb-0.5">총 누적 운동시간</div>
+                  <div className="flex items-baseline gap-1.5">
+                    <span className="text-lg font-black text-emerald-400 font-mono">
+                      {Math.floor(hoveredPoint.totalMinutes / 60)}시간 {Math.round(hoveredPoint.totalMinutes % 60)}분
+                    </span>
+                    <span className="text-xs text-slate-400 font-mono font-bold">
+                      ({hoveredPoint.totalHours}h)
+                    </span>
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <div className="text-[10px] text-slate-400 font-bold mb-1">누적 종목별 비중:</div>
+                  {WORKOUT_CATEGORIES.map(cat => {
+                    const hours = hoveredPoint[cat.key + 'Hours'] || 0;
+                    if (hours <= 0) return null;
+                    const pct = hoveredPoint.totalHours > 0
+                      ? ((hours / hoveredPoint.totalHours) * 100).toFixed(1)
+                      : '0.0';
+                    return (
+                      <div key={cat.key} className="flex items-center justify-between py-0.5">
+                        <span className="flex items-center gap-1.5 text-slate-300 font-bold">
+                          <span>{cat.icon}</span>
+                          <span>{cat.shortLabel}:</span>
+                        </span>
+                        <div className="flex items-center gap-2 font-mono">
+                          <span className="text-slate-100 font-extrabold">{hours}h</span>
+                          <span className="text-slate-400 text-[10px] font-bold">({pct}%)</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {hoveredPoint.dayActivities.length > 0 && (
+                  <div className="mt-2 pt-2 border-t border-slate-800/80 text-[11px] text-slate-300 truncate font-medium">
+                    🏃 당일: {hoveredPoint.dayActivities.join(', ')}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    // --- D3 MONTHLY STACKED BAR CHART ---
+    function D3MonthlyStackedBarChart({
+      allWorkouts,
+      height = 270,
+      selectedMonth,
+      onSelectMonth
+    }) {
+      const containerRef = useRef(null);
+      const [containerWidth, setContainerWidth] = useState(600);
+      const [hoveredMonth, setHoveredMonth] = useState(null);
+
+      useEffect(() => {
+        if (!containerRef.current) return;
+        const observer = new ResizeObserver((entries) => {
+          for (let entry of entries) {
+            setContainerWidth(entry.contentRect.width);
+          }
+        });
+        observer.observe(containerRef.current);
+        return () => observer.disconnect();
+      }, []);
+
+      const { monthlyData, maxMonthlyHours } = useMemo(() => {
+        if (!allWorkouts || allWorkouts.length === 0) {
+          return { monthlyData: [], maxMonthlyHours: 10 };
+        }
+
+        const monthMap = {};
+        allWorkouts.forEach(w => {
+          if (!w.date || w.date.length < 7) return;
+          const mKey = w.date.substring(0, 7);
+          const dur = w.duration || 0;
+          const cat = getWorkoutCategoryKey(w.activity);
+
+          if (!monthMap[mKey]) {
+            monthMap[mKey] = {
+              monthKey: mKey,
+              cycling: 0,
+              walking: 0,
+              running: 0,
+              hiking: 0,
+              swimming: 0,
+              other: 0,
+              totalMinutes: 0,
+              calories: 0,
+              sessions: 0,
+              dates: new Set(),
+              sportDetails: {}
+            };
+          }
+          monthMap[mKey][cat] += dur;
+          monthMap[mKey].totalMinutes += dur;
+          if (w.calories) monthMap[mKey].calories += w.calories;
+          monthMap[mKey].sessions += 1;
+          monthMap[mKey].dates.add(w.date);
+          monthMap[mKey].sportDetails[w.activity] = (monthMap[mKey].sportDetails[w.activity] || 0) + dur;
+        });
+
+        const sortedMonthKeys = Object.keys(monthMap).sort();
+        const list = sortedMonthKeys.map((mKey, idx) => {
+          const m = monthMap[mKey];
+          const totalHours = +(m.totalMinutes / 60).toFixed(1);
+          const activeDays = m.dates.size;
+          const dailyAvgMin = activeDays > 0 ? Math.round(m.totalMinutes / activeDays) : 0;
+
+          let growthRate = null;
+          if (idx > 0) {
+            const prev = monthMap[sortedMonthKeys[idx - 1]];
+            if (prev.totalMinutes > 0) {
+              growthRate = +(((m.totalMinutes - prev.totalMinutes) / prev.totalMinutes) * 100).toFixed(1);
+            }
+          }
+
+          const parts = mKey.split('-');
+          const monthTitle = `${parseInt(parts[1], 10)}월 (${parts[0]}년)`;
+          const shortTitle = `${parseInt(parts[1], 10)}월`;
+
+          return {
+            monthKey: mKey,
+            monthTitle,
+            shortTitle,
+            totalMinutes: m.totalMinutes,
+            totalHours,
+            sessions: m.sessions,
+            calories: m.calories,
+            activeDays,
+            dailyAvgMin,
+            growthRate,
+            cyclingHours: +(m.cycling / 60).toFixed(1),
+            walkingHours: +(m.walking / 60).toFixed(1),
+            runningHours: +(m.running / 60).toFixed(1),
+            hikingHours: +(m.hiking / 60).toFixed(1),
+            swimmingHours: +(m.swimming / 60).toFixed(1),
+            otherHours: +(m.other / 60).toFixed(1),
+            sportDetails: m.sportDetails
+          };
+        });
+
+        const maxH = d3.max(list, d => d.totalHours) || 10;
+        return { monthlyData: list, maxMonthlyHours: maxH };
+      }, [allWorkouts]);
+
+      const margin = { top: 35, right: 30, bottom: 45, left: 52 };
+      const innerWidth = Math.max(containerWidth - margin.left - margin.right, 100);
+      const innerHeight = Math.max(height - margin.top - margin.bottom, 80);
+
+      const stackKeys = ['cycling', 'walking', 'running', 'hiking', 'swimming', 'other'];
+
+      const series = useMemo(() => {
+        if (monthlyData.length === 0) return [];
+        const stackGen = d3.stack()
+          .keys(stackKeys)
+          .value((d, key) => d[key + 'Hours'] || 0);
+        return stackGen(monthlyData);
+      }, [monthlyData]);
+
+      const xScale = useMemo(() => {
+        return d3.scaleBand()
+          .domain(monthlyData.map(d => d.monthKey))
+          .range([0, innerWidth])
+          .padding(0.38);
+      }, [monthlyData, innerWidth]);
+
+      const yScale = useMemo(() => {
+        return d3.scaleLinear()
+          .domain([0, maxMonthlyHours * 1.25])
+          .range([innerHeight, 0])
+          .nice();
+      }, [maxMonthlyHours, innerHeight]);
+
+      if (monthlyData.length === 0) {
+        return (
+          <div className="flex flex-col items-center justify-center h-48 text-slate-400 bg-slate-50/50 rounded-xl border border-dashed border-slate-200">
+            <Calendar className="w-8 h-8 mb-2 opacity-50 text-slate-400" />
+            <p className="text-sm font-medium">표시할 월별 운동 데이터가 없습니다.</p>
+          </div>
+        );
+      }
+
+      return (
+        <div ref={containerRef} className="w-full relative select-none">
+          <div className="relative">
+            <svg width={containerWidth} height={height} className="overflow-visible">
+              <g transform={`translate(${margin.left}, ${margin.top})`}>
+                {/* Y-axis gridlines & labels */}
+                {yScale.ticks(5).map((tick, i) => (
+                  <g key={`m-grid-${i}`} transform={`translate(0, ${yScale(tick)})`}>
+                    <line x1={0} x2={innerWidth} stroke="#f1f5f9" strokeDasharray="3 3" />
+                    <text x={-10} y={4} textAnchor="end" className="text-xs fill-slate-500 font-mono font-bold">
+                      {tick}h
+                    </text>
+                  </g>
+                ))}
+
+                {/* Stacked Bars per Category */}
+                {series.map((s) => {
+                  const catKey = s.key;
+                  const meta = getWorkoutCategoryMeta(catKey);
+
+                  return (
+                    <g key={catKey}>
+                      {s.map((d) => {
+                        const mKey = d.data.monthKey;
+                        const x = xScale(mKey);
+                        const bw = xScale.bandwidth();
+                        const y0 = yScale(d[0]);
+                        const y1 = yScale(d[1]);
+                        const segmentHeight = Math.max(0, y0 - y1);
+                        if (segmentHeight <= 0) return null;
+
+                        const isHovered = hoveredMonth && hoveredMonth.monthKey === mKey;
+                        const isSelected = selectedMonth === mKey;
+
+                        return (
+                          <rect
+                            key={`${catKey}-${mKey}`}
+                            x={x}
+                            y={y1}
+                            width={bw}
+                            height={segmentHeight}
+                            fill={meta.color}
+                            opacity={isHovered ? 1 : 0.88}
+                            className="transition-all duration-150 cursor-pointer"
+                            onMouseEnter={() => setHoveredMonth(d.data)}
+                            onMouseLeave={() => setHoveredMonth(null)}
+                            onClick={() => onSelectMonth && onSelectMonth(mKey)}
+                          />
+                        );
+                      })}
+                    </g>
+                  );
+                })}
+
+                {/* Bar Labels (Top total hours + sessions) & Bottom Month Name */}
+                {monthlyData.map((d) => {
+                  const x = xScale(d.monthKey);
+                  const bw = xScale.bandwidth();
+                  const y = yScale(d.totalHours);
+                  const isHovered = hoveredMonth && hoveredMonth.monthKey === d.monthKey;
+                  const isSelected = selectedMonth === d.monthKey;
+
+                  return (
+                    <g
+                      key={`labels-${d.monthKey}`}
+                      className="cursor-pointer"
+                      onClick={() => onSelectMonth && onSelectMonth(d.monthKey)}
+                      onMouseEnter={() => setHoveredMonth(d)}
+                      onMouseLeave={() => setHoveredMonth(null)}
+                    >
+                      {/* Top Label: Total hours */}
+                      <text
+                        x={x + bw / 2}
+                        y={Math.max(y - 18, -12)}
+                        textAnchor="middle"
+                        className={`text-xs font-mono font-black ${
+                          isSelected ? 'fill-emerald-800 font-extrabold' : 'fill-slate-900'
+                        }`}
+                      >
+                        {d.totalHours}시간
+                      </text>
+                      <text
+                        x={x + bw / 2}
+                        y={Math.max(y - 4, 0)}
+                        textAnchor="middle"
+                        className="text-[10px] font-mono font-bold fill-slate-500"
+                      >
+                        {d.sessions}회
+                      </text>
+
+                      {/* Bottom Label: Month title */}
+                      <text
+                        x={x + bw / 2}
+                        y={innerHeight + 20}
+                        textAnchor="middle"
+                        className={`text-xs font-bold transition-colors ${
+                          isSelected
+                            ? 'fill-emerald-950 font-black underline'
+                            : isHovered
+                            ? 'fill-slate-950 font-black'
+                            : 'fill-slate-700'
+                        }`}
+                      >
+                        {d.monthTitle}
+                      </text>
+                    </g>
+                  );
+                })}
+              </g>
+            </svg>
+
+            {/* Hover Tooltip Card */}
+            {hoveredMonth && (
+              <div
+                style={{
+                  position: 'absolute',
+                  left: Math.min(
+                    Math.max((xScale(hoveredMonth.monthKey) || 0) + margin.left - 100, 10),
+                    containerWidth - 250
+                  ),
+                  top: Math.max((yScale(hoveredMonth.totalHours) || 0) + margin.top - 160, 6)
+                }}
+                className="pointer-events-none bg-slate-900/95 backdrop-blur text-white p-3.5 rounded-xl shadow-2xl border border-slate-700/80 z-30 min-w-[230px] text-xs"
+              >
+                <div className="font-bold border-b border-slate-700/80 pb-2 mb-2 flex justify-between items-center">
+                  <span className="text-sm font-extrabold">{hoveredMonth.monthTitle}</span>
+                  <span className="text-[11px] text-emerald-300 font-black px-1.5 py-0.5 rounded bg-emerald-950 border border-emerald-700/50">
+                    {hoveredMonth.sessions}회 세션
+                  </span>
+                </div>
+
+                <div className="space-y-1 mb-2.5 pb-2 border-b border-slate-800">
+                  <div className="flex justify-between items-center">
+                    <span className="text-slate-400 font-semibold">총 운동시간:</span>
+                    <span className="text-emerald-400 font-extrabold font-mono text-sm">
+                      {hoveredMonth.totalHours}시간 ({hoveredMonth.totalMinutes.toLocaleString()}분)
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-slate-400 font-semibold">일평균 운동:</span>
+                    <span className="text-slate-200 font-bold font-mono">
+                      {hoveredMonth.dailyAvgMin}분 / 운동일
+                    </span>
+                  </div>
+                  {hoveredMonth.growthRate !== null && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-400 font-semibold">전월 대비 증감:</span>
+                      <span className={`font-extrabold font-mono ${
+                        hoveredMonth.growthRate >= 0 ? 'text-emerald-300' : 'text-rose-300'
+                      }`}>
+                        {hoveredMonth.growthRate >= 0 ? `+${hoveredMonth.growthRate}% 📈` : `${hoveredMonth.growthRate}% 📉`}
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-1">
+                  <div className="text-[10px] text-slate-400 font-bold">종목별 월간 누적:</div>
+                  {WORKOUT_CATEGORIES.map(cat => {
+                    const hours = hoveredMonth[cat.key + 'Hours'] || 0;
+                    if (hours <= 0) return null;
+                    const pct = ((hours / hoveredMonth.totalHours) * 100).toFixed(1);
+                    return (
+                      <div key={cat.key} className="flex items-center justify-between py-0.5">
+                        <span className="flex items-center gap-1.5 text-slate-300 font-bold">
+                          <span>{cat.icon}</span>
+                          <span>{cat.shortLabel}:</span>
+                        </span>
+                        <span className="text-slate-100 font-mono font-bold">
+                          {hours}h <span className="text-slate-400 text-[10px]">({pct}%)</span>
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Monthly Summary Cards Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 mt-4 pt-4 border-t border-slate-100">
+            {monthlyData.map((m) => {
+              const isSelected = selectedMonth === m.monthKey;
+              return (
+                <div
+                  key={`card-${m.monthKey}`}
+                  onClick={() => onSelectMonth && onSelectMonth(m.monthKey)}
+                  className={`p-3.5 rounded-xl border transition-all cursor-pointer ${
+                    isSelected
+                      ? 'bg-emerald-50/70 border-emerald-400 ring-2 ring-emerald-400/40 shadow-xs'
+                      : 'bg-slate-50/70 hover:bg-slate-100/80 border-slate-200'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-sm font-black text-slate-900">{m.monthTitle}</span>
+                    {m.growthRate !== null ? (
+                      <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${
+                        m.growthRate >= 0 ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
+                      }`}>
+                        {m.growthRate >= 0 ? `+${m.growthRate}%` : `${m.growthRate}%`}
+                      </span>
+                    ) : (
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-200 text-slate-700">
+                        기초 수립
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex items-baseline gap-1.5 mb-2">
+                    <span className="text-xl font-black text-slate-950 font-mono">{m.totalHours}</span>
+                    <span className="text-xs font-bold text-slate-600">시간</span>
+                    <span className="text-[11px] text-slate-500 font-mono ml-auto">총 {m.sessions}회 세션</span>
+                  </div>
+
+                  {/* Category miniature visual progress bar */}
+                  <div className="space-y-1 pt-1.5 border-t border-slate-200/80">
+                    <div className="w-full h-1.5 rounded-full bg-slate-200 flex overflow-hidden">
+                      {WORKOUT_CATEGORIES.map(cat => {
+                        const val = m[cat.key + 'Hours'] || 0;
+                        const pct = m.totalHours > 0 ? (val / m.totalHours) * 100 : 0;
+                        if (pct <= 0) return null;
+                        return (
+                          <div
+                            key={cat.key}
+                            style={{ width: `${pct}%`, backgroundColor: cat.color }}
+                            title={`${cat.label}: ${val}h (${pct.toFixed(0)}%)`}
+                          />
+                        );
+                      })}
+                    </div>
+                    <div className="flex justify-between items-center text-[10px] text-slate-500 font-mono font-bold">
+                      <span>🚴 {m.cyclingHours}h</span>
+                      <span>🚶 {m.walkingHours}h</span>
+                      <span>🏃 {m.runningHours}h</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      );
+    }
+
+    // --- WORKOUT VOLUME & CUMULATIVE SECTION WRAPPER ---
+    function WorkoutVolumeSection({
+      workouts,
+      allWorkouts,
+      selectedMonth,
+      onSelectMonth,
+      currentMonthTitle,
+      dateRangeLabel
+    }) {
+      const [chartTab, setChartTab] = useState('cumulative'); // 'cumulative' | 'monthly' | 'daily'
+      const [highlightedCategory, setHighlightedCategory] = useState(null);
+      const [cumScope, setCumScope] = useState('auto'); // 'auto' | 'all' | 'month'
+
+      // Decide which records to show for cumulative:
+      // If user toggles 'all' or if selectedMonth === 'all', show allWorkouts; otherwise workouts (monthFiltered)
+      const effectiveCumulativeWorkouts = useMemo(() => {
+        if (cumScope === 'all') return allWorkouts || [];
+        if (cumScope === 'month') return workouts || [];
+        // Default 'auto': if 'all', all; if month selected, show month's accumulation
+        return workouts && workouts.length > 0 ? workouts : (allWorkouts || []);
+      }, [cumScope, workouts, allWorkouts]);
+
+      // Compute overall stats for cumulative
+      const categoryTotals = useMemo(() => {
+        const list = effectiveCumulativeWorkouts;
+        let cum = { cycling: 0, walking: 0, running: 0, hiking: 0, swimming: 0, other: 0, total: 0 };
+        list.forEach(w => {
+          const dur = w.duration || 0;
+          const cat = getWorkoutCategoryKey(w.activity);
+          cum[cat] += dur;
+          cum.total += dur;
+        });
+        return {
+          cycling: +(cum.cycling / 60).toFixed(1),
+          walking: +(cum.walking / 60).toFixed(1),
+          running: +(cum.running / 60).toFixed(1),
+          hiking: +(cum.hiking / 60).toFixed(1),
+          swimming: +(cum.swimming / 60).toFixed(1),
+          other: +(cum.other / 60).toFixed(1),
+          total: +(cum.total / 60).toFixed(1),
+          totalMinutes: cum.total
+        };
+      }, [effectiveCumulativeWorkouts]);
+
+      const toggleCategory = (catKey) => {
+        setHighlightedCategory(prev => prev === catKey ? null : catKey);
+      };
+
+      return (
+        <div className="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200 shadow-sm">
+          {/* Card Header with View Switcher Tabs */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-4 pb-3 border-b border-slate-100">
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center font-black">
+                {chartTab === 'cumulative' ? (
+                  <TrendingUp className="w-5 h-5 stroke-[2.5]" />
+                ) : chartTab === 'monthly' ? (
+                  <Calendar className="w-5 h-5 stroke-[2.5]" />
+                ) : (
+                  <BarChart3 className="w-5 h-5 stroke-[2.5]" />
+                )}
+              </div>
+              <div>
+                <h3 className="text-base sm:text-lg font-black text-slate-950">
+                  {chartTab === 'cumulative'
+                    ? `${selectedMonth === 'all' || cumScope === 'all' ? '종합' : currentMonthTitle} 운동 시간 누적 추이 (시간 누적 그래프)`
+                    : chartTab === 'monthly'
+                    ? '월별 운동 누적 현황 및 종목별 비중 분석'
+                    : `${currentMonthTitle} 일자별 운동 시간(분) 볼륨 추이`}
+                </h3>
+                <p className="text-xs sm:text-sm font-bold text-slate-500">
+                  {chartTab === 'cumulative'
+                    ? '일별로 쌓이는 누적 운동 시간 및 종목별(자전거·달리기·걷기 등) 색상 영역 시각화'
+                    : chartTab === 'monthly'
+                    ? '월간 총 운동 시간·세션 수 추이 및 종목별 운동 집중도 비교'
+                    : '날짜별 트레이닝 수행량 및 세션 집중도 시각화'}
+                </p>
+              </div>
+            </div>
+
+            {/* View Switcher Tabs */}
+            <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-xl border border-slate-200/80 shrink-0 self-start md:self-auto">
+              <button
+                onClick={() => setChartTab('cumulative')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer ${
+                  chartTab === 'cumulative'
+                    ? 'bg-white text-emerald-900 shadow-xs border border-slate-200/90'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <TrendingUp className="w-3.5 h-3.5 text-emerald-600 stroke-[2.5]" />
+                <span>시간 누적 그래프</span>
+              </button>
+              <button
+                onClick={() => setChartTab('monthly')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer ${
+                  chartTab === 'monthly'
+                    ? 'bg-white text-emerald-900 shadow-xs border border-slate-200/90'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <Calendar className="w-3.5 h-3.5 text-emerald-600 stroke-[2.5]" />
+                <span>월별 현황</span>
+              </button>
+              <button
+                onClick={() => setChartTab('daily')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer ${
+                  chartTab === 'daily'
+                    ? 'bg-white text-emerald-900 shadow-xs border border-slate-200/90'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <BarChart3 className="w-3.5 h-3.5 text-emerald-600 stroke-[2.5]" />
+                <span>일별 운동량</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Cumulative Specific Top KPI Banner & Category Legend */}
+          {chartTab === 'cumulative' && (
+            <div className="mb-4 space-y-3">
+              {/* Optional sub-filter: 당월 vs 전체기간 누적 (only when specific month is selected) */}
+              {selectedMonth !== 'all' && (
+                <div className="flex items-center justify-between bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-bold text-slate-700">
+                  <span className="flex items-center gap-1.5">
+                    <span>📌 누적 범위 선택:</span>
+                    <strong className="text-emerald-800 font-extrabold">{cumScope === 'all' ? '전체 기간 누적' : `${currentMonthTitle} 당월 누적`}</strong>
+                  </span>
+                  <div className="flex gap-1">
+                    <button
+                      onClick={() => setCumScope('month')}
+                      className={`px-2 py-0.5 rounded text-[11px] font-extrabold cursor-pointer transition-colors ${
+                        cumScope !== 'all' ? 'bg-emerald-600 text-white' : 'bg-white text-slate-600 border border-slate-200'
+                      }`}
+                    >
+                      당월 누적
+                    </button>
+                    <button
+                      onClick={() => setCumScope('all')}
+                      className={`px-2 py-0.5 rounded text-[11px] font-extrabold cursor-pointer transition-colors ${
+                        cumScope === 'all' ? 'bg-emerald-600 text-white' : 'bg-white text-slate-600 border border-slate-200'
+                      }`}
+                    >
+                      전체 기간 누적
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* KPI Strip */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
+                  <div className="text-[11px] font-bold text-slate-500 mb-0.5">⏱️ 총 누적 운동시간</div>
+                  <div className="text-base sm:text-lg font-black text-slate-950 font-mono">
+                    {Math.floor(categoryTotals.totalMinutes / 60)}시간 {Math.round(categoryTotals.totalMinutes % 60)}분
+                  </div>
+                  <div className="text-[10px] text-emerald-700 font-mono font-bold">
+                    총 {categoryTotals.total}시간 ({categoryTotals.totalMinutes.toLocaleString()}분)
+                  </div>
+                </div>
+
+                <div className="p-3 rounded-xl bg-sky-50/70 border border-sky-200">
+                  <div className="text-[11px] font-bold text-sky-800 mb-0.5">🚴 1위 자전거 라이딩</div>
+                  <div className="text-base sm:text-lg font-black text-sky-950 font-mono">
+                    {categoryTotals.cycling}시간
+                  </div>
+                  <div className="text-[10px] text-sky-700 font-mono font-bold">
+                    전체의 {categoryTotals.total > 0 ? ((categoryTotals.cycling / categoryTotals.total) * 100).toFixed(1) : 0}%
+                  </div>
+                </div>
+
+                <div className="p-3 rounded-xl bg-amber-50/70 border border-amber-200">
+                  <div className="text-[11px] font-bold text-amber-800 mb-0.5">🚶 2위 걷기</div>
+                  <div className="text-base sm:text-lg font-black text-amber-950 font-mono">
+                    {categoryTotals.walking}시간
+                  </div>
+                  <div className="text-[10px] text-amber-700 font-mono font-bold">
+                    전체의 {categoryTotals.total > 0 ? ((categoryTotals.walking / categoryTotals.total) * 100).toFixed(1) : 0}%
+                  </div>
+                </div>
+
+                <div className="p-3 rounded-xl bg-rose-50/70 border border-rose-200">
+                  <div className="text-[11px] font-bold text-rose-800 mb-0.5">🏃 3위 달리기</div>
+                  <div className="text-base sm:text-lg font-black text-rose-950 font-mono">
+                    {categoryTotals.running}시간
+                  </div>
+                  <div className="text-[10px] text-rose-700 font-mono font-bold">
+                    전체의 {categoryTotals.total > 0 ? ((categoryTotals.running / categoryTotals.total) * 100).toFixed(1) : 0}%
+                  </div>
+                </div>
+              </div>
+
+              {/* Category Legend Pills with Click to Highlight */}
+              <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                <span className="text-[11px] font-black text-slate-500 mr-1">종목별 영역:</span>
+                {WORKOUT_CATEGORIES.map(cat => {
+                  const hours = categoryTotals[cat.key] || 0;
+                  const isSelected = highlightedCategory === cat.key;
+                  return (
+                    <button
+                      key={cat.key}
+                      onClick={() => toggleCategory(cat.key)}
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold transition-all cursor-pointer border ${
+                        isSelected
+                          ? `${cat.bg} ring-2 ring-emerald-500 font-black shadow-xs`
+                          : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200'
+                      }`}
+                    >
+                      <span
+                        className="w-2.5 h-2.5 rounded-full shrink-0"
+                        style={{ backgroundColor: cat.color }}
+                      />
+                      <span>{cat.icon} {cat.label}</span>
+                      <span className="font-mono text-[11px] text-slate-500 font-black">
+                        {hours}h
+                      </span>
+                    </button>
+                  );
+                })}
+                {highlightedCategory && (
+                  <button
+                    onClick={() => setHighlightedCategory(null)}
+                    className="text-[11px] text-slate-500 hover:text-slate-800 underline ml-1 cursor-pointer font-bold"
+                  >
+                    필터 해제
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Active Chart Rendering */}
+          <div className="pt-2">
+            {chartTab === 'cumulative' && (
+              <D3StackedCumulativeAreaChart
+                workouts={effectiveCumulativeWorkouts}
+                height={260}
+                highlightedCategory={highlightedCategory}
+                onToggleCategory={toggleCategory}
+              />
+            )}
+
+            {chartTab === 'monthly' && (
+              <D3MonthlyStackedBarChart
+                allWorkouts={allWorkouts}
+                height={260}
+                selectedMonth={selectedMonth}
+                onSelectMonth={onSelectMonth}
+              />
+            )}
+
+            {chartTab === 'daily' && (
+              <D3DailyVolumeChart workouts={workouts} height={230} />
+            )}
+          </div>
+        </div>
+      );
+    }
+
     // --- D3 WORKOUT CUMULATIVE DURATION & COUNT BAR CHART ---
     function D3WorkoutBarChart({ activityStats, selectedActivity, onSelectActivity, height = 260 }) {
       const containerRef = useRef(null);
@@ -2385,26 +3502,15 @@
                   </div>
                 </div>
 
-                {/* Daily Volume Bar Chart */}
-                <div className="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200 shadow-sm">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center font-black">
-                        <BarChart3 className="w-5 h-5 stroke-[2.5]" />
-                      </div>
-                      <div>
-                        <h3 className="text-base sm:text-lg font-black text-slate-950">{currentMonthTitle} 일자별 운동 시간(분) 볼륨 추이</h3>
-                        <p className="text-xs sm:text-sm font-bold text-slate-500">날짜별 트레이닝 수행량 및 세션 집중도 시각화</p>
-                      </div>
-                    </div>
-                    <span className="text-xs sm:text-sm font-black text-emerald-800 bg-emerald-50 px-3 py-1.5 rounded-full border border-emerald-300 font-mono">
-                      {dateRangeLabel}
-                    </span>
-                  </div>
-                  <div className="pt-2">
-                    <D3DailyVolumeChart workouts={monthFilteredWorkouts} height={230} />
-                  </div>
-                </div>
+                {/* Workout Volume & Cumulative Stacked / Monthly Analysis Section */}
+                <WorkoutVolumeSection
+                  workouts={monthFilteredWorkouts}
+                  allWorkouts={parsedWorkouts}
+                  selectedMonth={selectedMonth}
+                  onSelectMonth={setSelectedMonth}
+                  currentMonthTitle={currentMonthTitle}
+                  dateRangeLabel={dateRangeLabel}
+                />
 
                 {/* Workout Highlights & Record Improvements Callouts */}
                 <div className="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200 shadow-sm">
